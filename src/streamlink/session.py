@@ -8,6 +8,7 @@ import requests
 import requests.packages.urllib3.util.connection as urllib3_connection
 from requests.packages.urllib3.util.connection import allowed_gai_family
 
+from streamlink.cache import Cache
 from streamlink import __version__, plugins
 from streamlink.compat import is_win32
 from streamlink.exceptions import NoPluginError, PluginError
@@ -53,6 +54,7 @@ class Streamlink:
             "hls-start-offset": 0,
             "hls-duration": None,
             "http-stream-timeout": 60.0,
+            "hls-token-period": 60.0,
             "ringbuffer-size": 1024 * 1024 * 16,  # 16 MB
             "rtmp-timeout": 60.0,
             "rtmp-rtmpdump": is_win32 and "rtmpdump.exe" or "rtmpdump",
@@ -73,6 +75,9 @@ class Streamlink:
             "locale": None,
             "user-input-requester": None
         })
+        # felix add update headers cookies
+        self.cache = Cache(filename="StreamlinkSession.json")
+
         if options:
             self.options.update(options)
         self.plugins = OrderedDict({})
@@ -132,6 +137,9 @@ class Streamlink:
 
         hls-timeout              (float) Timeout for reading data from
                                  HLS streams, default: ``60.0``
+
+        hls-token-period        Time for update token period
+                                Default is ``60.0``
 
         http-proxy               (str) Specify a HTTP proxy to use for
                                  all HTTP requests

@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import struct
@@ -6,6 +7,7 @@ from threading import Event
 from urllib.parse import urlparse
 
 from Crypto.Cipher import AES
+from requests.cookies import cookiejar_from_dict
 from requests.exceptions import ChunkedEncodingError
 
 from streamlink.exceptions import StreamError
@@ -49,6 +51,9 @@ class HLSStreamWriter(SegmentedStreamWriter):
         self.key_uri_override = options.get("hls-segment-key-uri")
         self.stream_data = options.get("hls-segment-stream-data")
 
+        # felix add update headers cookies
+        self.token_uri_override = options.get("hls-token-uri")
+
         self.ignore_names = False
         ignore_names = {*options.get("hls-segment-ignore-names")}
         if ignore_names:
@@ -91,8 +96,40 @@ class HLSStreamWriter(SegmentedStreamWriter):
         return AES.new(self.key_data, AES.MODE_CBC, iv)
 
     def create_request_params(self, sequence):
+        # felix add update headers cookies
         request_params = dict(self.reader.request_params)
         headers = request_params.pop("headers", {})
+        cookies = request_params.pop("cookies", {})
+        if self.token_uri_override:
+            p = urlparse(self.token_uri_override)
+            key_uri = LazyFormatter.format(
+                self.token_uri_override,
+                url=self.token_uri_override,
+                scheme=p.scheme,
+                netloc=p.netloc,
+                path=p.path,
+                query=p.query,
+            )
+            try:
+                token = self.session.cache.get(key_uri)
+                if not token:
+                    res = self.session.http.get(key_uri, exception=StreamError,
+                                                retries=self.playlist_reload_retries,
+                                                **self.reader.request_params)
+                    token = self.session.http.json(res)
+                    self.session.cache.set(key_uri, token, expires=self.session.options.get('hls-token-period'))
+                    log.debug(f"create_request_params save to cache {key_uri} {token}")
+                else:
+                    log.debug(f"create_request_params load from cache {key_uri} {token}")
+            except BaseException as e:
+                log.warning(e)
+                token = {}
+            log.debug(f"create_request_params token {token}")
+
+            token_headers = token.pop("headers", {})
+            token_cookies = token.pop("cookies", {})
+            headers.update(token_headers)
+            cookies.update(token_cookies)
 
         if sequence.segment.byterange:
             bytes_start = self.byterange_offsets[sequence.segment.uri]
@@ -105,6 +142,9 @@ class HLSStreamWriter(SegmentedStreamWriter):
             self.byterange_offsets[sequence.segment.uri] = bytes_end + 1
 
         request_params["headers"] = headers
+        if cookies:
+            cookiejar = cookiejar_from_dict(cookies)
+            request_params["cookies"] = cookiejar
 
         return request_params
 
@@ -180,7 +220,6 @@ class HLSStreamWorker(SegmentedStreamWorker):
     def __init__(self, *args, **kwargs):
         SegmentedStreamWorker.__init__(self, *args, **kwargs)
         self.stream = self.reader.stream
-
         self.playlist_changed = False
         self.playlist_end = None
         self.playlist_sequence = -1
@@ -193,6 +232,8 @@ class HLSStreamWorker(SegmentedStreamWorker):
         self.duration_limit = self.stream.duration or (
             int(self.session.options.get("hls-duration")) if self.session.options.get("hls-duration") else None)
         self.hls_live_restart = self.stream.force_restart or self.session.options.get("hls-live-restart")
+        # felix add update headers cookies
+        self.token_uri_override = self.session.options.get("hls-token-uri")
 
         if str(self.playlist_reload_time_override).isnumeric() and float(self.playlist_reload_time_override) >= 2:
             self.playlist_reload_time_override = float(self.playlist_reload_time_override)
@@ -227,10 +268,55 @@ class HLSStreamWorker(SegmentedStreamWorker):
 
         self.reader.buffer.wait_free()
         log.debug("Reloading playlist")
+        # felix add update headers cookies
+        '''
+        add option to self.session.options.options
+        then update self.session.http.headers before access self.stream.url
+        eg:
+        headers.update(session.headers)
+        '''
+        request_params = dict(self.reader.request_params)
+        headers = request_params.pop("headers", {})
+        cookies = request_params.pop("cookies", {})
+        if self.token_uri_override:
+            p = urlparse(self.token_uri_override)
+            key_uri = LazyFormatter.format(
+                self.token_uri_override,
+                url=self.token_uri_override,
+                scheme=p.scheme,
+                netloc=p.netloc,
+                path=p.path,
+                query=p.query,
+            )
+            try:
+                token = self.session.cache.get(key_uri)
+                if not token:
+                    res = self.session.http.get(key_uri, exception=StreamError,
+                                                retries=self.playlist_reload_retries,
+                                                **self.reader.request_params)
+                    token = self.session.http.json(res)
+                    self.session.cache.set(key_uri, token, expires=self.session.options.get('hls-token-period'))
+                    log.debug(f"reload_playlist save to cache {key_uri} {token}")
+                else:
+                    log.debug(f"reload_playlist load from cache {key_uri} {token}")
+            except BaseException as e:
+                log.warning(e)
+                token = {}
+            log.debug(f"reload_playlist {token}")
+
+            token_headers = token.pop("headers", {})
+            token_cookies = token.pop("cookies", {})
+            headers.update(token_headers)
+            cookies.update(token_cookies)
+            request_params["headers"] = headers
+            if cookies:
+                cookiejar = cookiejar_from_dict(cookies)
+                request_params["cookies"] = cookiejar
+
         res = self.session.http.get(self.stream.url,
                                     exception=StreamError,
                                     retries=self.playlist_reload_retries,
-                                    **self.reader.request_params)
+                                    **request_params)
         try:
             playlist = self._reload_playlist(res.text, res.url)
         except ValueError as err:
@@ -496,8 +582,8 @@ class HLSStream(HTTPStream):
 
                 # select the first audio stream that matches the users explict language selection
                 if (('*' in audio_select or media.language in audio_select or media.name in audio_select)
-                        or ((not preferred_audio or media.default) and locale.explicit and locale.equivalent(
-                            language=media.language))):
+                    or ((not preferred_audio or media.default) and locale.explicit and locale.equivalent(
+                        language=media.language))):
                     preferred_audio.append(media)
 
             # final fallback on the first audio stream listed

@@ -895,6 +895,36 @@ def build_parser():
         """
     )
     transport.add_argument(
+        "--hls-token-uri",
+        metavar="URI",
+        type=str,
+        help="""
+            URI to dynamics update token. If no URI is specified, the URI contained
+            in the segments will be used.
+
+            URI can be templated using the following variables, which will be
+            replaced with its respective part from the source segment URI:
+
+              {url} {scheme} {netloc} {path} {query}
+
+            Examples:
+
+              --hls-token-uri "https://example.com/hls/token"
+              --hls-token-uri "{scheme}://1.2.3.4{path}{query}"
+              --hls-token-uri"{scheme}://{netloc}/custom/path/to/token"
+
+            Default is None.
+            """
+    )
+    transport.add_argument(
+        "--hls-token-period",
+        type=num(float, min=0),
+        metavar="SECONDS",
+        help="""
+            Time for update token  period
+            Default is 60.0.
+            """)
+    transport.add_argument(
         "--hls-audio-select",
         type=comma_list,
         metavar="CODE",

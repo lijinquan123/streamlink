@@ -770,6 +770,13 @@ def setup_options():
     if args.hls_segment_key_uri:
         streamlink.set_option("hls-segment-key-uri", args.hls_segment_key_uri)
 
+    # felix add update headers cookies
+    if args.hls_token_uri:
+        streamlink.set_option("hls-token-uri", args.hls_token_uri)
+
+    if args.hls_token_period:
+        streamlink.set_option("hls-token-period", args.hls_token_period)
+
     if args.hls_timeout:
         streamlink.set_option("hls-timeout", args.hls_timeout)
 
