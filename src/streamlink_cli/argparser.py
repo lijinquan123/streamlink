@@ -909,9 +909,9 @@ def build_parser():
 
             Examples:
 
-              --hls-token-uri "https://example.com/hls/token"
-              --hls-token-uri "{scheme}://1.2.3.4{path}{query}"
-              --hls-token-uri"{scheme}://{netloc}/custom/path/to/token"
+              --hls-token-uri base64("https://example.com/hls/token")
+              --hls-token-uri base64("{scheme}://1.2.3.4{path}{query}")
+              --hls-token-uri base64("{scheme}://{netloc}/custom/path/to/token")
 
             Default is None.
             """

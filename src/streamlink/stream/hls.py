@@ -1,4 +1,4 @@
-import json
+import base64
 import logging
 import re
 import struct
@@ -52,7 +52,9 @@ class HLSStreamWriter(SegmentedStreamWriter):
         self.stream_data = options.get("hls-segment-stream-data")
 
         # felix add update headers cookies
-        self.token_uri_override = options.get("hls-token-uri")
+        token_uri_override = options.get("hls-token-uri")
+        self.token_uri_override = base64.urlsafe_b64decode(
+            token_uri_override) if token_uri_override else token_uri_override
 
         self.ignore_names = False
         ignore_names = {*options.get("hls-segment-ignore-names")}
@@ -233,7 +235,8 @@ class HLSStreamWorker(SegmentedStreamWorker):
             int(self.session.options.get("hls-duration")) if self.session.options.get("hls-duration") else None)
         self.hls_live_restart = self.stream.force_restart or self.session.options.get("hls-live-restart")
         # felix add update headers cookies
-        self.token_uri_override = self.session.options.get("hls-token-uri")
+        token_uri_override = self.session.options.get("hls-token-uri")
+        self.token_uri_override = base64.urlsafe_b64decode(token_uri_override) if token_uri_override else token_uri_override
 
         if str(self.playlist_reload_time_override).isnumeric() and float(self.playlist_reload_time_override) >= 2:
             self.playlist_reload_time_override = float(self.playlist_reload_time_override)
