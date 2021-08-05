@@ -1,7 +1,6 @@
 from inspect import getfullargspec
 
 import requests
-
 from streamlink.exceptions import StreamError
 from streamlink.stream.stream import Stream
 from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrapper
@@ -38,6 +37,7 @@ class HTTPStream(Stream):
 
         self.args = dict(url=url, **args)
         self.buffered = buffered
+        self._url = None
 
     def __repr__(self):
         return "<HTTPStream({0!r})>".format(self.url)
@@ -61,8 +61,14 @@ class HTTPStream(Stream):
     @property
     def url(self):
         method = self.args.get("method", "GET")
-        return requests.Request(method=method,
-                                **valid_args(self.args)).prepare().url
+        url = requests.Request(method=method,
+                                     **valid_args(self.args)).prepare().url
+        return self._url or url
+
+    @url.setter
+    def url(self, url):
+        # LJQ: 让url能够被设置，替换错误的链接
+        self._url = url
 
     def open(self):
         method = self.args.get("method", "GET")

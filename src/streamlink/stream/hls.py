@@ -1,16 +1,15 @@
 import base64
+from collections import defaultdict, namedtuple, OrderedDict
 import logging
 import re
 import struct
-from collections import OrderedDict, defaultdict, namedtuple
 from threading import Event
 from urllib.parse import urlparse
 
 from Crypto.Cipher import AES
-from requests.cookies import cookiejar_from_dict
 from Crypto.Util.Padding import unpad
+from requests.cookies import cookiejar_from_dict
 from requests.exceptions import ChunkedEncodingError
-
 from streamlink.exceptions import StreamError
 from streamlink.stream import hls_playlist
 from streamlink.stream.ffmpegmux import FFMPEGMuxer, MuxedStream
@@ -103,9 +102,11 @@ class HLSStreamWriter(SegmentedStreamWriter):
             )
             try:
                 token = self.session.cache.get(key_uri)
-                if not token:
+
+                # LJQ: 产生403异常则刷新token
+                if not token or 0 < self.raise403_count < 10:
                     res = self.session.http.get(key_uri, exception=StreamError,
-                                                retries=self.playlist_reload_retries,
+                                                retries=self.retries,
                                                 **self.reader.request_params)
                     token = self.session.http.json(res)
                     self.session.cache.set(key_uri, token, expires=self.session.options.get('hls-token-period'))
@@ -142,10 +143,10 @@ class HLSStreamWriter(SegmentedStreamWriter):
     def fetch(self, sequence, retries=None):
         if self.closed or not retries:
             return
-
         try:
             request_params = self.create_request_params(sequence)
 
+            # LJQ: TODO: upload 403
             return self.session.http.get(sequence.segment.uri,
                                          stream=(self.stream_data
                                                  and not sequence.segment.key),
@@ -228,7 +229,6 @@ class HLSStreamWorker(SegmentedStreamWorker):
         if self.token_uri_override and not self.token_uri_override.startswith("http"):
             self.token_uri_override = str(base64.urlsafe_b64decode(self.token_uri_override), encoding="utf-8")
 
-
         if str(self.playlist_reload_time_override).isnumeric() and float(self.playlist_reload_time_override) >= 2:
             self.playlist_reload_time_override = float(self.playlist_reload_time_override)
         elif self.playlist_reload_time_override not in ["segment", "live-edge"]:
@@ -307,6 +307,12 @@ class HLSStreamWorker(SegmentedStreamWorker):
                 cookiejar = cookiejar_from_dict(cookies)
                 request_params["cookies"] = cookiejar
 
+            # LJQ: 替换为正确的索引链接 BLOCK{
+            url = token.pop("url", '')
+            if url:
+                self.stream.url = url
+            # LJQ: BLOCK}
+
         res = self.session.http.get(self.stream.url,
                                     exception=StreamError,
                                     retries=self.playlist_reload_retries,
@@ -315,7 +321,6 @@ class HLSStreamWorker(SegmentedStreamWorker):
             playlist = self._reload_playlist(res.text, res.url)
         except ValueError as err:
             raise StreamError(err)
-
         if playlist.is_master:
             raise StreamError("Attempted to play a variant playlist, use "
                               "'hls://{0}' instead".format(self.stream.url))
@@ -576,8 +581,8 @@ class HLSStream(HTTPStream):
 
                 # select the first audio stream that matches the users explict language selection
                 if (('*' in audio_select or media.language in audio_select or media.name in audio_select)
-                    or ((not preferred_audio or media.default) and locale.explicit and locale.equivalent(
-                        language=media.language))):
+                        or ((not preferred_audio or media.default) and locale.explicit and locale.equivalent(
+                            language=media.language))):
                     preferred_audio.append(media)
 
             # final fallback on the first audio stream listed
@@ -599,10 +604,10 @@ class HLSStream(HTTPStream):
                 stream_name = name_fmt.format(**names)
             else:
                 stream_name = (
-                    names.get(name_key)
-                    or names.get("name")
-                    or names.get("pixels")
-                    or names.get("bitrate")
+                        names.get(name_key)
+                        or names.get("name")
+                        or names.get("pixels")
+                        or names.get("bitrate")
                 )
 
             if not stream_name:
