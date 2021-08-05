@@ -1,11 +1,12 @@
-import logging
-import queue
 from concurrent import futures
 from concurrent.futures.thread import ThreadPoolExecutor
+import logging
+import queue
 from sys import version_info
 from threading import Event, Thread
 
 from streamlink.buffers import RingBuffer
+from streamlink.exceptions import HTTPStatusCode403Error
 from streamlink.stream.stream import StreamIO
 
 log = logging.getLogger(__name__)
@@ -121,6 +122,18 @@ class SegmentedStreamWriter(Thread):
         Thread.__init__(self, name="Thread-{0}".format(self.__class__.__name__))
         self.daemon = True
 
+        # LJQ: 记录403次数，方便请求回掉接口 BLOCK{
+        self.reset_403_count()
+
+    def increase_403_count(self):
+        self.raise403_count += 1
+        # print(f'increase 403 count, raise403_count: {self.raise403_count}')
+
+    def reset_403_count(self):
+        self.raise403_count = 0
+        # print(f'reset 403 count')
+        # LJQ：BLOCK}
+
     def close(self):
         """Shuts down the thread."""
         if not self.closed:
@@ -184,6 +197,18 @@ class SegmentedStreamWriter(Thread):
                     continue
                 except futures.CancelledError:
                     break
+
+                # LJQ: 产生403异常，则放弃请求余下segment链接，重新拿取回掉数据 BLOCK{
+                except HTTPStatusCode403Error:
+                    self.futures.queue.clear()
+                    self.increase_403_count()
+                    # print('Result from raising 403 error, it will clear the queue and stop to request the rest HLS URL')
+                    break
+                else:
+                    # request url normally then reset 403
+                    if result and result.status_code == 200:
+                        self.reset_403_count()
+                # LJQ: BLOCK}
 
                 if result is not None:
                     self.write(segment, result)

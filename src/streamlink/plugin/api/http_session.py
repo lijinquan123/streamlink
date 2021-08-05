@@ -4,7 +4,7 @@ import requests.adapters
 import urllib3
 from requests import Session
 
-from streamlink.exceptions import PluginError
+from streamlink.exceptions import PluginError, HTTPStatusCode403Error
 from streamlink.packages.requests_file import FileAdapter
 from streamlink.plugin.api import useragents
 from streamlink.utils import parse_json, parse_xml
@@ -156,11 +156,22 @@ class HTTPSession(Session):
                     *args,
                     **kwargs
                 )
+
+                # LJQ: 403状态码直接抛出异常，不再继续重试 BLOCK{
+                # print(f'{res.status_code}  {res.request.method}  {res.elapsed.total_seconds():.3f} s  {res.headers.get("Content-Length", 0) or len(res.content)} bytes  {res.url}')
+                if res.status_code == 403:
+                    raise HTTPStatusCode403Error(url)
+                # LJQ: BLOCK}
+
                 if raise_for_status and res.status_code not in acceptable_status:
                     res.raise_for_status()
                 break
             except KeyboardInterrupt:
                 raise
+            except HTTPStatusCode403Error as rerr:
+                err = exception(f"Unable to open URL: {url} ({rerr})")
+                err.err = rerr
+                raise rerr
             except Exception as rerr:
                 if retries >= total_retries:
                     err = exception(f"Unable to open URL: {url} ({rerr})")
