@@ -206,7 +206,7 @@ class SegmentedStreamWriter(Thread):
                     break
                 else:
                     # request url normally then reset 403
-                    if result and result.status_code == 200:
+                    if result and result.ok:
                         self.reset_403_count()
                 # LJQ: BLOCK}
 
