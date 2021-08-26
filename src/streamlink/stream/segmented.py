@@ -1,9 +1,11 @@
+import base64
 from concurrent import futures
 from concurrent.futures.thread import ThreadPoolExecutor
 import logging
 import queue
 from sys import version_info
 from threading import Event, Thread
+import time
 
 from streamlink.buffers import RingBuffer
 from streamlink.exceptions import HTTPStatusCode403Error
@@ -98,6 +100,7 @@ class SegmentedStreamWriter(Thread):
     This thread is responsible for fetching segments, processing them
     and finally writing the data to the buffer.
     """
+    upload403_map = {}
 
     def __init__(self, reader, size=20, retries=None, threads=None, timeout=None):
         self.closed = False
@@ -113,6 +116,12 @@ class SegmentedStreamWriter(Thread):
 
         if not timeout:
             timeout = self.session.options.get("stream-segment-timeout")
+
+        # LJQ: add stream-segment-upload-403-uri
+        upload_uri = self.session.options.get("stream-segment-upload-403-uri")
+        if upload_uri and not upload_uri.startswith("http"):
+            upload_uri = str(base64.urlsafe_b64decode(upload_uri), encoding="utf-8")
+        self.upload_uri = upload_uri
 
         self.retries = retries
         self.timeout = timeout
@@ -133,6 +142,25 @@ class SegmentedStreamWriter(Thread):
         self.raise403_count = 0
         # print(f'reset 403 count')
         # LJQ：BLOCK}
+
+    def upload_403_error(self, url: str, headers: dict):
+        # LJQ: 403异常时，上传异常请求
+        # print('上传异常请求')
+        if not self.upload_uri:
+            return
+        try:
+            key = tuple(sorted(headers.items(), key=lambda x: x[0]))
+            if key not in type(self).upload403_map or type(self).upload403_map[key] + 60 < time.time():
+                resp = self.session.http.post(
+                    self.upload_uri,
+                    json={
+                        'url': url,
+                        'headers': dict(headers)
+                    })
+                type(self).upload403_map[key] = time.time()
+                return resp.json()
+        except Exception as e:
+            log.error(e)
 
     def close(self):
         """Shuts down the thread."""
@@ -199,9 +227,11 @@ class SegmentedStreamWriter(Thread):
                     break
 
                 # LJQ: 产生403异常，则放弃请求余下segment链接，重新拿取回掉数据 BLOCK{
-                except HTTPStatusCode403Error:
+                except HTTPStatusCode403Error as e:
                     self.futures.queue.clear()
                     self.increase_403_count()
+                    # LJQ: 上传403请求头
+                    self.upload_403_error(url=e.error.request.url, headers=e.error.request.headers)
                     # print('Result from raising 403 error, it will clear the queue and stop to request the rest HLS URL')
                     break
                 else:

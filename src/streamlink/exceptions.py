@@ -57,6 +57,9 @@ class StreamError(StreamlinkError):
 class HTTPStatusCode403Error(StreamlinkError):
     """Stream return 403 status code, raise 403 error"""
 
+    def __init__(self, error):
+        self.error = error
+
 
 __all__ = ["StreamlinkError", "PluginError", "NoPluginError",
            "NoStreamsError", "StreamError", "HTTPStatusCode403Error", ]

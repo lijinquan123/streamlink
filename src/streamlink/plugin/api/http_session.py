@@ -160,7 +160,7 @@ class HTTPSession(Session):
                 # LJQ: 403状态码直接抛出异常，不再继续重试 BLOCK{
                 # print(f'{res.status_code}  {res.request.method}  {res.elapsed.total_seconds():.3f} s  {res.headers.get("Content-Length", 0) or len(res.content)} bytes  {res.url}')
                 if res.status_code == 403:
-                    raise HTTPStatusCode403Error(url)
+                    raise HTTPStatusCode403Error(res)
                 # LJQ: BLOCK}
 
                 if raise_for_status and res.status_code not in acceptable_status:

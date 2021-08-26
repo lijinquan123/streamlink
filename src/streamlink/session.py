@@ -59,6 +59,7 @@ class Streamlink:
             "rtmp-timeout": 60.0,
             "rtmp-rtmpdump": is_win32 and "rtmpdump.exe" or "rtmpdump",
             "rtmp-proxy": None,
+            "stream-segment-upload-403-uri": None,
             "stream-segment-attempts": 3,
             "stream-segment-threads": 1,
             "stream-segment-timeout": 10.0,
@@ -229,6 +230,8 @@ class Streamlink:
 
         mux-subtitles            (bool) Mux available subtitles into the
                                  output stream.
+
+        stream-segment-upload-403-uri  (str) URI for uploading request data when HTTP status code equal 403
 
         stream-segment-attempts  (int) How many attempts should be done
                                  to download each segment, default: ``3``.
