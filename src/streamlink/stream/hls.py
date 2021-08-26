@@ -146,7 +146,6 @@ class HLSStreamWriter(SegmentedStreamWriter):
         try:
             request_params = self.create_request_params(sequence)
 
-            # LJQ: TODO: upload 403
             return self.session.http.get(sequence.segment.uri,
                                          stream=(self.stream_data
                                                  and not sequence.segment.key),

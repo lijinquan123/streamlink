@@ -1069,6 +1069,28 @@ def build_parser():
         Default is 60.0.
         """
     )
+    # LJQ: add argument, stream-segment-upload-403-uri
+    transport.add_argument(
+        "--stream-segment-upload-403-uri",
+        metavar="URI",
+        type=str,
+        help="""
+            URI is going to upload the data (e.g. url and headers) of network request when HTTP status code equal 403.
+
+            URI can be templated using the following variables, which will be
+            replaced with its respective part from the source segment URI:
+
+              {url} {scheme} {netloc} {path} {query}
+
+            Examples:
+
+              --stream-segment-upload-403-uri base64("https://example.com/hls/upload")
+              --stream-segment-upload-403-uri base64("{scheme}://1.2.3.4{path}{query}")
+              --stream-segment-upload-403-uri base64("{scheme}://{netloc}/custom/path/to/upload")
+
+            Default is None and it doesn't work.
+            """
+    )
     transport.add_argument(
         "--stream-segment-attempts",
         type=num(int, min=0),
