@@ -17,6 +17,9 @@ log = logging.getLogger(__name__)
 _lock = threading.Lock()
 _id = 0
 
+# LJQ: 删除/tmp目录下所有1天前、未访问、以streamlinkpipe-开头的fifo文件
+os.system(f'find {tempfile.gettempdir()}/streamlinkpipe-* -type p -atime +1 -print0 |xargs -0 rm -rf')
+
 
 class NamedPipeBase(abc.ABC):
     path: Path
