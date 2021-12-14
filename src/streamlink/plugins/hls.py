@@ -46,6 +46,8 @@ class HLSPlugin(Plugin):
         log.debug("URL={0}; params={1}".format(urlnoproto, params))
         streams = HLSStream.parse_variant_playlist(self.session, urlnoproto, **params)
         if not streams:
+            # LJQ: 删除多余字段name_fmt,此字段会导致HTTPStream进行网络请求时报错.
+            params.pop('name_fmt', None)
             return {"live": HLSStream(self.session, urlnoproto, **params)}
         else:
             return streams
