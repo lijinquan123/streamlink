@@ -10,7 +10,8 @@ from streamlink.utils.args import (
 )
 from streamlink.utils.times import hours_minutes_seconds
 from streamlink_cli.constants import (
-    DEFAULT_STREAM_METADATA, PLAYER_ARGS_INPUT_DEFAULT, PLAYER_ARGS_INPUT_FALLBACK, STREAM_PASSTHROUGH, SUPPORTED_PLAYERS
+    DEFAULT_STREAM_METADATA, PLAYER_ARGS_INPUT_DEFAULT, PLAYER_ARGS_INPUT_FALLBACK, STREAM_PASSTHROUGH,
+    SUPPORTED_PLAYERS
 )
 from streamlink_cli.utils import find_default_player
 
@@ -860,6 +861,18 @@ def build_parser():
             default: The playlist's target duration metadata
 
         Default is default.
+        """
+    )
+    # LJQ: ts链接后拼接m3u8链接的参数
+    transport.add_argument(
+        "--ts-url-add-m3u-url-params",
+        type=boolean,
+        metavar="{true,false}",
+        default=False,
+        help="""
+        Whether to splice m3u8 URL parameters after TS URL.
+
+        Default is "false".
         """
     )
     transport.add_argument(

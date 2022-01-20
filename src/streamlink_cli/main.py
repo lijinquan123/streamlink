@@ -21,7 +21,7 @@ from socks import __version__ as socks_version
 from websocket import __version__ as websocket_version
 
 import streamlink.logger as logger
-from streamlink import NoPluginError, PluginError, StreamError, Streamlink, __version__ as streamlink_version
+from streamlink import __version__ as streamlink_version, NoPluginError, PluginError, StreamError, Streamlink
 from streamlink.cache import Cache
 from streamlink.exceptions import FatalPluginError
 from streamlink.plugin import PluginOptions
@@ -763,6 +763,10 @@ def setup_options():
     if args.hls_playlist_reload_time:
         streamlink.set_option("hls-playlist-reload-time", args.hls_playlist_reload_time)
 
+    # LJQ: add ts_url_add_m3u_url_params
+    if args.ts_url_add_m3u_url_params:
+        streamlink.set_option("ts-url-add-m3u-url-params", args.ts_url_add_m3u_url_params)
+
     if args.hls_segment_threads:
         streamlink.set_option("hls-segment-threads", args.hls_segment_threads)
 
@@ -1008,7 +1012,7 @@ def check_version(force=False):
         cache.set("version_info_printed", True, (60 * 60 * 6))
     elif force:
         log.info("Your Streamlink version ({0}) is up to date!".format(
-                 installed_version))
+            installed_version))
 
     if force:
         sys.exit()

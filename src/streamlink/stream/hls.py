@@ -219,6 +219,8 @@ class HLSStreamWorker(SegmentedStreamWorker):
         self.playlist_reload_time_override = self.session.options.get("hls-playlist-reload-time")
         self.playlist_reload_retries = self.session.options.get("hls-playlist-reload-attempts")
         self.live_edge = self.session.options.get("hls-live-edge")
+        # LJQ: 添加 ts_url_add_m3u_url_params 变量
+        self.ts_url_add_m3u_url_params = self.session.options.get("ts-url-add-m3u-url-params")
         self.duration_offset_start = int(self.stream.start_offset + (self.session.options.get("hls-start-offset") or 0))
         self.duration_limit = self.stream.duration or (
             int(self.session.options.get("hls-duration")) if self.session.options.get("hls-duration") else None)
@@ -253,7 +255,7 @@ class HLSStreamWorker(SegmentedStreamWorker):
                       f"End Sequence: {self.playlist_end}")
 
     def _reload_playlist(self, text, url):
-        return hls_playlist.load(text, url)
+        return hls_playlist.load(text, url, is_ts_url_add_m3u_url_params=self.ts_url_add_m3u_url_params)
 
     def reload_playlist(self):
         if self.closed:
