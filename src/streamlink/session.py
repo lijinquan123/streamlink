@@ -8,13 +8,13 @@ import requests
 import requests.packages.urllib3.util.connection as urllib3_connection
 from requests.packages.urllib3.util.connection import allowed_gai_family
 
-from streamlink.cache import Cache
 from streamlink import __version__, plugins
+from streamlink.cache import Cache
 from streamlink.compat import is_win32
 from streamlink.exceptions import NoPluginError, PluginError
 from streamlink.logger import StreamlinkLogger
 from streamlink.options import Options
-from streamlink.plugin import Plugin, api
+from streamlink.plugin import api, Plugin
 from streamlink.utils import load_module, update_scheme
 from streamlink.utils.l10n import Localization
 
@@ -43,6 +43,8 @@ class Streamlink:
             "hds-segment-timeout": 10.0,
             "hds-timeout": 60.0,
             "hls-live-edge": 3,
+            # LJQ 设置 ts-url-add-m3u-url-params 默认值
+            "ts-url-add-m3u-url-params": False,
             "hls-segment-attempts": 3,
             "hls-segment-ignore-names": [],
             "hls-segment-threads": 1,
@@ -116,6 +118,8 @@ class Streamlink:
 
         hds-timeout              (float) Timeout for reading data from
                                  HDS streams, default: ``60.0``
+
+        ts-url-add-m3u-url-params   (bool)Whether to splice m3u8 URL parameters after TS URL, 默认: ``False``
 
         hls-live-edge            (int) How many segments from the end
                                  to start live streams on, default: ``3``

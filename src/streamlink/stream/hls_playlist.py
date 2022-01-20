@@ -13,7 +13,6 @@ log = logging.getLogger(__name__)
 
 __all__ = ["load", "M3U8Parser"]
 
-
 # EXT-X-BYTERANGE
 ByteRange = namedtuple("ByteRange", "range offset")
 
@@ -89,6 +88,8 @@ class M3U8Parser:
         self.base_uri = base_uri
         self.m3u8 = m3u8()
         self.state = {}
+        self.is_ts_url_add_m3u_url_params = bool(kwargs.get('is_ts_url_add_m3u_url_params'))
+        self.m3u8_query = urlparse(self.base_uri).query
 
     def create_stream_info(self, streaminf, cls=None):
         program_id = streaminf.get("PROGRAM-ID")
@@ -321,11 +322,15 @@ class M3U8Parser:
 
     def uri(self, uri):
         if uri and urlparse(uri).scheme:
-            return uri
+            url = uri
         elif self.base_uri and uri:
-            return urljoin(self.base_uri, uri)
+            url = urljoin(self.base_uri, uri)
         else:
-            return uri
+            url = uri
+        # LJQ: 在ts后添加m3u参数
+        if self.is_ts_url_add_m3u_url_params and self.m3u8_query:
+            url = f'{url}{["?", "&"]["?" in url]}{self.m3u8_query}'
+        return url
 
     def get_segment(self, uri):
         byterange = self.state.pop("byterange", None)
