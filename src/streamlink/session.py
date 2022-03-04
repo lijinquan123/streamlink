@@ -61,7 +61,6 @@ class Streamlink:
             "rtmp-timeout": 60.0,
             "rtmp-rtmpdump": is_win32 and "rtmpdump.exe" or "rtmpdump",
             "rtmp-proxy": None,
-            "stream-segment-upload-403-uri": None,
             "stream-segment-attempts": 3,
             "stream-segment-threads": 1,
             "stream-segment-timeout": 10.0,
@@ -235,7 +234,9 @@ class Streamlink:
         mux-subtitles            (bool) Mux available subtitles into the
                                  output stream.
 
-        stream-segment-upload-403-uri  (str) URI for uploading request data when HTTP status code equal 403
+        http-report-uri  (str) URI will report when stream is abnormal
+
+        http-report-interval  (int) The report URI's interval
 
         stream-segment-attempts  (int) How many attempts should be done
                                  to download each segment, default: ``3``.
@@ -330,6 +331,12 @@ class Streamlink:
             self.http.cert = value
         elif key == "http-timeout":
             self.http.timeout = value
+        # LJQ: http-report-uri
+        elif key == "http-report-uri":
+            self.http.report_uri = value
+        # LJQ: http-report-interval
+        elif key == "http-report-interval":
+            self.http.report_interval = value
         else:
             self.options.set(key, value)
 
@@ -358,6 +365,12 @@ class Streamlink:
             return self.http.cert
         elif key == "http-timeout":
             return self.http.timeout
+        # LJQ: http-report-uri
+        elif key == "http-report-uri":
+            return self.http.report_uri
+        # LJQ: http-report-interval
+        elif key == "http-report-interval":
+            return self.http.report_interval
         else:
             return self.options.get(key)
 

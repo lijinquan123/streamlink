@@ -833,9 +833,13 @@ def setup_options():
     if args.rtmp_timeout:
         streamlink.set_option("rtmp-timeout", args.rtmp_timeout)
 
-    # LJQ: add stream-segment-upload-403-uri
-    if args.stream_segment_upload_403_uri:
-        streamlink.set_option("stream-segment-upload-403-uri", args.stream_segment_upload_403_uri)
+    # LJQ: add http-report-uri
+    if args.http_report_uri:
+        streamlink.set_option("http-report-uri", args.http_report_uri)
+
+    # LJQ: add http-report-interval
+    if args.http_report_interval:
+        streamlink.set_option("http-report-interval", args.http_report_interval)
 
     if args.stream_segment_attempts:
         streamlink.set_option("stream-segment-attempts", args.stream_segment_attempts)

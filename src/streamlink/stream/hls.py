@@ -1,8 +1,8 @@
 import base64
-from collections import defaultdict, namedtuple, OrderedDict
 import logging
 import re
 import struct
+from collections import OrderedDict, defaultdict, namedtuple
 from threading import Event
 from urllib.parse import urlparse
 
@@ -10,6 +10,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 from requests.cookies import cookiejar_from_dict
 from requests.exceptions import ChunkedEncodingError
+
 from streamlink.exceptions import StreamError
 from streamlink.stream import hls_playlist
 from streamlink.stream.ffmpegmux import FFMPEGMuxer, MuxedStream
@@ -102,9 +103,7 @@ class HLSStreamWriter(SegmentedStreamWriter):
             )
             try:
                 token = self.session.cache.get(key_uri)
-
-                # LJQ: 产生403异常则刷新token
-                if not token or 0 < self.raise403_count < 10:
+                if not token:
                     res = self.session.http.get(key_uri, exception=StreamError,
                                                 retries=self.retries,
                                                 **self.reader.request_params)
@@ -582,8 +581,8 @@ class HLSStream(HTTPStream):
 
                 # select the first audio stream that matches the users explict language selection
                 if (('*' in audio_select or media.language in audio_select or media.name in audio_select)
-                        or ((not preferred_audio or media.default) and locale.explicit and locale.equivalent(
-                            language=media.language))):
+                    or ((not preferred_audio or media.default) and locale.explicit and locale.equivalent(
+                        language=media.language))):
                     preferred_audio.append(media)
 
             # final fallback on the first audio stream listed
@@ -605,10 +604,10 @@ class HLSStream(HTTPStream):
                 stream_name = name_fmt.format(**names)
             else:
                 stream_name = (
-                        names.get(name_key)
-                        or names.get("name")
-                        or names.get("pixels")
-                        or names.get("bitrate")
+                    names.get(name_key)
+                    or names.get("name")
+                    or names.get("pixels")
+                    or names.get("bitrate")
                 )
 
             if not stream_name:

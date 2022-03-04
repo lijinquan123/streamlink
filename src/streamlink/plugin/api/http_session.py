@@ -4,11 +4,10 @@ import requests.adapters
 import urllib3
 from requests import Session
 
-from streamlink.exceptions import PluginError, HTTPStatusCode403Error
+from streamlink.exceptions import PluginError
 from streamlink.packages.requests_file import FileAdapter
 from streamlink.plugin.api import useragents
 from streamlink.utils import parse_json, parse_xml
-
 
 try:
     # We tell urllib3 to disable warnings about unverified HTTPS requests,
@@ -54,14 +53,49 @@ def _parse_keyvalue_list(val):
 
 
 class HTTPSession(Session):
+    last_report_interval = 0
+
     def __init__(self):
         super().__init__()
-
+        self._report_uri = None
+        self._report_interval = 60
         self.headers['User-Agent'] = useragents.FIREFOX
         self.timeout = 20.0
 
         self.mount('file://', FileAdapter())
 
+    # LJQ: 添加上报接口和间隔 BLOCK{
+    @property
+    def report_interval(self):
+        return self._report_interval
+
+    @report_interval.setter
+    def report_interval(self, interval):
+        self._report_interval = interval
+
+    @property
+    def report_uri(self):
+        return self._report_uri
+
+    @report_uri.setter
+    def report_uri(self, uri):
+        self._report_uri = uri
+
+    def report_play_status(self, status: bool):
+        """
+        上报当前播放状态
+        """
+        if self.report_uri and self.report_interval:
+            if time.time() - type(self).last_report_interval > 60:
+                type(self).last_report_interval = time.time()
+                # 为避免循环上报, 使用 requests.request 而非 self.request
+                try:
+                    requests.request('get', self.report_uri, params={'status': status})
+                except (requests.exceptions.RequestException, Exception):
+                    """播放状态上报异常, 不处理"""
+                type(self).last_report_interval = time.time()
+
+    # LJQ: BLOCK}
     @classmethod
     def determine_json_encoding(cls, sample):
         """
@@ -145,6 +179,7 @@ class HTTPSession(Session):
             params.update(session.params)
 
         while True:
+            res = None
             try:
                 res = super().request(
                     method,
@@ -156,24 +191,20 @@ class HTTPSession(Session):
                     *args,
                     **kwargs
                 )
-
-                # LJQ: 403状态码直接抛出异常，不再继续重试 BLOCK{
                 # print(f'{res.status_code}  {res.request.method}  {res.elapsed.total_seconds():.3f} s  {res.headers.get("Content-Length", 0) or len(res.content)} bytes  {res.url}')
-                if res.status_code == 403:
-                    raise HTTPStatusCode403Error(res)
-                # LJQ: BLOCK}
 
                 if raise_for_status and res.status_code not in acceptable_status:
                     res.raise_for_status()
+                # LJQ: 上报播放正常状态
+                self.report_play_status(True)
                 break
             except KeyboardInterrupt:
                 raise
-            except HTTPStatusCode403Error as rerr:
-                err = exception(f"Unable to open URL: {url} ({rerr})")
-                err.err = rerr
-                raise rerr
             except Exception as rerr:
-                if retries >= total_retries:
+                # LJQ: 上报播放异常状态
+                self.report_play_status(False)
+                # LJQ: 403状态码 不再重试
+                if retries >= total_retries or (res and res.status_code == 403):
                     err = exception(f"Unable to open URL: {url} ({rerr})")
                     err.err = rerr
                     raise err
