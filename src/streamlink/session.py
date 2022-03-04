@@ -1,3 +1,4 @@
+import base64
 import logging
 import pkgutil
 from collections import OrderedDict
@@ -14,7 +15,7 @@ from streamlink.compat import is_win32
 from streamlink.exceptions import NoPluginError, PluginError
 from streamlink.logger import StreamlinkLogger
 from streamlink.options import Options
-from streamlink.plugin import api, Plugin
+from streamlink.plugin import Plugin, api
 from streamlink.utils import load_module, update_scheme
 from streamlink.utils.l10n import Localization
 
@@ -333,6 +334,8 @@ class Streamlink:
             self.http.timeout = value
         # LJQ: http-report-uri
         elif key == "http-report-uri":
+            if isinstance(value, str) and not value.startswith('http'):
+                value = base64.urlsafe_b64decode(value).decode('utf-8')
             self.http.report_uri = value
         # LJQ: http-report-interval
         elif key == "http-report-interval":
