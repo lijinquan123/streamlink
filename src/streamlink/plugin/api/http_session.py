@@ -1,3 +1,4 @@
+import threading
 import time
 
 import requests.adapters
@@ -82,6 +83,12 @@ class HTTPSession(Session):
         self._report_uri = uri
 
     def report_play_status(self, status: bool):
+        """
+        上报当前播放状态
+        """
+        threading.Thread(target=self.report_play_status_block, args=(status,), daemon=True).start()
+
+    def report_play_status_block(self, status: bool):
         """
         上报当前播放状态
         """
