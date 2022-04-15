@@ -1,4 +1,4 @@
-import threading
+import os
 import time
 
 import requests.adapters
@@ -208,10 +208,20 @@ class HTTPSession(Session):
             except KeyboardInterrupt:
                 raise
             except Exception as rerr:
-                # LJQ: 上报播放异常状态
-                self.report_play_status(False)
-                # LJQ: 403状态码 不再重试
-                if retries >= total_retries or (res and res.status_code == 403):
+                if res is not None:
+                    # LJQ: 上报播放异常状态
+                    self.report_play_status(False)
+                    if True:
+                        # TODO: 添加停止参数
+                        print(f'异常状态码: {res.status_code}, 停止程序')
+                        os._exit(403)
+                    # LJQ: 403状态码 不再重试
+                    if res.status_code == 403:
+                        err = exception(f"Unable to open URL: {url} ({rerr})")
+                        err.err = rerr
+                        raise err
+
+                if retries >= total_retries:
                     err = exception(f"Unable to open URL: {url} ({rerr})")
                     err.err = rerr
                     raise err
