@@ -86,6 +86,7 @@ class HTTPSession(Session):
         """
         上报当前播放状态
         """
+        import threading
         threading.Thread(target=self.report_play_status_block, args=(status,), daemon=True).start()
 
     def report_play_status_block(self, status: bool):
