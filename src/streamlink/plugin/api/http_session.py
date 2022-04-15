@@ -94,7 +94,7 @@ class HTTPSession(Session):
         上报当前播放状态
         """
         if self.report_uri and self.report_interval:
-            if time.time() - type(self).last_report_interval > 60:
+            if time.time() - type(self).last_report_interval > 60 or not status:
                 type(self).last_report_interval = time.time()
                 # 为避免循环上报, 使用 requests.request 而非 self.request
                 try:
@@ -211,7 +211,7 @@ class HTTPSession(Session):
             except Exception as rerr:
                 if res is not None:
                     # LJQ: 上报播放异常状态
-                    self.report_play_status(False)
+                    self.report_play_status_block(False)
                     if True:
                         # TODO: 添加停止参数
                         print(f'异常状态码: {res.status_code}, 停止程序')
