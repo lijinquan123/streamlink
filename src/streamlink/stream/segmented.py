@@ -6,6 +6,7 @@ from sys import version_info
 from threading import Event, Thread
 
 from streamlink.buffers import RingBuffer
+from streamlink.exceptions import HTTPStatusCodesError
 from streamlink.stream.stream import StreamIO
 
 log = logging.getLogger(__name__)
@@ -184,7 +185,13 @@ class SegmentedStreamWriter(Thread):
                     continue
                 except futures.CancelledError:
                     break
-
+                except HTTPStatusCodesError as e:
+                    log.error(f"Failed to open segment {segment.num}: {e}")
+                    # stop all waiting segments to request
+                    self.futures.queue.clear()
+                    # stop reloading playlist
+                    self.reader.worker.closed = True
+                    break
                 if result is not None:
                     self.write(segment, result)
 
