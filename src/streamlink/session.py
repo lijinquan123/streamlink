@@ -340,6 +340,12 @@ class Streamlink:
         # LJQ: http-report-interval
         elif key == "http-report-interval":
             self.http.report_interval = value
+        # LJQ: stop-stream-playing
+        elif key == "stop-stream-playing":
+            self.http.stop_stream_playing = value
+        # LJQ: error-http-status-codes
+        elif key == "error-http-status-codes":
+            self.http.error_http_status_codes = value
         else:
             self.options.set(key, value)
 
@@ -374,6 +380,12 @@ class Streamlink:
         # LJQ: http-report-interval
         elif key == "http-report-interval":
             return self.http.report_interval
+        # LJQ: stop-stream-playing
+        elif key == "stop-stream-playing":
+            return self.http.stop_stream_playing
+        # LJQ: error-http-status-codes
+        elif key == "error-http-status-codes":
+            return self.http.error_http_status_codes
         else:
             return self.options.get(key)
 
