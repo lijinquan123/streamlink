@@ -32,5 +32,10 @@ class StreamError(StreamlinkError):
     """Stream related error."""
 
 
+# LJQ: HTTP请求出现错误状态码则触发此异常类
+class HTTPStatusCodesError(IOError):
+    """HTTP status codes error."""
+
+
 __all__ = ["StreamlinkError", "PluginError", "NoPluginError",
-           "NoStreamsError", "StreamError"]
+           "NoStreamsError", "StreamError", "HTTPStatusCodesError"]

@@ -4,7 +4,7 @@ import requests.adapters
 import urllib3
 from requests import Session
 
-from streamlink.exceptions import PluginError
+from streamlink.exceptions import HTTPStatusCodesError, PluginError
 from streamlink.packages.requests_file import FileAdapter
 from streamlink.plugin.api import useragents
 from streamlink.utils import parse_json, parse_xml
@@ -59,12 +59,15 @@ class HTTPSession(Session):
         super().__init__()
         self._report_uri = None
         self._report_interval = 60
+        self._stop_stream_playing = False
+        self._error_http_status_codes = 403, 404
         self.headers['User-Agent'] = useragents.FIREFOX
         self.timeout = 20.0
 
         self.mount('file://', FileAdapter())
 
-    # LJQ: 添加上报接口和间隔 BLOCK{
+    # LJQ: BLOCK{
+    # 添加上报接口和间隔
     @property
     def report_interval(self):
         return self._report_interval
@@ -85,8 +88,15 @@ class HTTPSession(Session):
         """
         上报当前播放状态
         """
+        import threading
+        threading.Thread(target=self.report_play_status_block, args=(status,), daemon=True).start()
+
+    def report_play_status_block(self, status: bool):
+        """
+        上报当前播放状态
+        """
         if self.report_uri and self.report_interval:
-            if time.time() - type(self).last_report_interval > 60:
+            if time.time() - type(self).last_report_interval > 60 or not status:
                 type(self).last_report_interval = time.time()
                 # 为避免循环上报, 使用 requests.request 而非 self.request
                 try:
@@ -94,6 +104,23 @@ class HTTPSession(Session):
                 except (requests.exceptions.RequestException, Exception):
                     """播放状态上报异常, 不处理"""
                 type(self).last_report_interval = time.time()
+
+    # 添加错误码和停止流
+    @property
+    def stop_stream_playing(self):
+        return self._stop_stream_playing
+
+    @stop_stream_playing.setter
+    def stop_stream_playing(self, stop_playing):
+        self._stop_stream_playing = stop_playing
+
+    @property
+    def error_http_status_codes(self):
+        return self._error_http_status_codes
+
+    @error_http_status_codes.setter
+    def error_http_status_codes(self, status_codes):
+        self._error_http_status_codes = status_codes
 
     # LJQ: BLOCK}
     @classmethod
@@ -192,7 +219,6 @@ class HTTPSession(Session):
                     **kwargs
                 )
                 # print(f'{res.status_code}  {res.request.method}  {res.elapsed.total_seconds():.3f} s  {res.headers.get("Content-Length", 0) or len(res.content)} bytes  {res.url}')
-
                 if raise_for_status and res.status_code not in acceptable_status:
                     res.raise_for_status()
                 # LJQ: 上报播放正常状态
@@ -202,9 +228,16 @@ class HTTPSession(Session):
                 raise
             except Exception as rerr:
                 # LJQ: 上报播放异常状态
-                self.report_play_status(False)
-                # LJQ: 403状态码 不再重试
-                if retries >= total_retries or (res and res.status_code == 403):
+                self.report_play_status_block(False)
+                # LJQ: 错误状态码停止继续播放流或者不再重试请求
+                if res is not None and str(res.status_code) in self.error_http_status_codes:
+                    if self.stop_stream_playing:
+                        exception = HTTPStatusCodesError
+                    err = exception(f"Unable to open URL: {url} ({res.status_code})")
+                    err.err = rerr
+                    raise err
+
+                if retries >= total_retries:
                     err = exception(f"Unable to open URL: {url} ({rerr})")
                     err.err = rerr
                     raise err

@@ -21,7 +21,7 @@ from socks import __version__ as socks_version
 from websocket import __version__ as websocket_version
 
 import streamlink.logger as logger
-from streamlink import __version__ as streamlink_version, NoPluginError, PluginError, StreamError, Streamlink
+from streamlink import NoPluginError, PluginError, StreamError, Streamlink, __version__ as streamlink_version
 from streamlink.cache import Cache
 from streamlink.exceptions import FatalPluginError
 from streamlink.plugin import PluginOptions
@@ -840,6 +840,14 @@ def setup_options():
     # LJQ: add http-report-interval
     if args.http_report_interval:
         streamlink.set_option("http-report-interval", args.http_report_interval)
+
+    # LJQ: add stop-stream-playing
+    if args.stop_stream_playing:
+        streamlink.set_option("stop-stream-playing", args.stop_stream_playing)
+
+    # LJQ: add error-http-status-codes
+    if args.error_http_status_codes:
+        streamlink.set_option("error-http-status-codes", args.error_http_status_codes)
 
     if args.stream_segment_attempts:
         streamlink.set_option("stream-segment-attempts", args.stream_segment_attempts)

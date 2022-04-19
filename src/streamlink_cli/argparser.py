@@ -1357,7 +1357,8 @@ def build_parser():
 
         Default is 20.0.
         """
-    )  # LJQ: add argument, http-report-uri
+    )
+    # LJQ: add argument, http-report-uri
     http.add_argument(
         "--http-report-uri",
         metavar="URI",
@@ -1388,6 +1389,29 @@ def build_parser():
                 The report URI's interval.
 
                 Default is 60.
+                """
+    )
+    # LJQ: add argument, stop-stream-playing
+    http.add_argument(
+        "--stop-stream-playing",
+        type=boolean,
+        metavar="{yes,true,1,on,no,false,0,off}",
+        default=False,
+        help="""
+                Stop stream playing.
+
+                Default is false.
+                """
+    )
+    # LJQ: add argument, error-http-status-codes
+    http.add_argument(
+        "--error-http-status-codes",
+        type=comma_list,
+        default=[403, 404],
+        help="""
+                Error HTTP status codes that are used to exit the program or stop retrying request.
+
+                Default is [403, 404].
                 """
     )
 
