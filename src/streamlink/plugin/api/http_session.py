@@ -227,15 +227,19 @@ class HTTPSession(Session):
             except KeyboardInterrupt:
                 raise
             except Exception as rerr:
-                # LJQ: 上报播放异常状态
-                self.report_play_status_block(False)
                 # LJQ: 错误状态码停止继续播放流或者不再重试请求
-                if res is not None and str(res.status_code) in self.error_http_status_codes:
-                    if self.stop_stream_playing:
-                        exception = HTTPStatusCodesError
-                    err = exception(f"Unable to open URL: {url} ({res.status_code})")
-                    err.err = rerr
-                    raise err
+                if res is None:
+                    # LJQ: 上报播放异常状态: 请求未响应
+                    self.report_play_status(None)
+                else:
+                    # LJQ: 上报播放异常状态: 状态码异常
+                    self.report_play_status_block(False)
+                    if str(res.status_code) in self.error_http_status_codes:
+                        if self.stop_stream_playing:
+                            exception = HTTPStatusCodesError
+                        err = exception(f"Unable to open URL: {url} ({res.status_code})")
+                        err.err = rerr
+                        raise err
 
                 if retries >= total_retries:
                     err = exception(f"Unable to open URL: {url} ({rerr})")
