@@ -218,7 +218,7 @@ class HTTPSession(Session):
                     *args,
                     **kwargs
                 )
-                # print(f'{res.status_code}  {res.request.method}  {res.elapsed.total_seconds():.3f} s  {res.headers.get("Content-Length", 0) or len(res.content)} bytes  {res.url}')
+                # print(f'{res.status_code}  {res.request.method}  {res.elapsed.total_seconds():.3f} s  {res.headers.get("Content-Length", 0) or len(res.content)} bytes  {res.url}  {res.request.headers}')
                 if raise_for_status and res.status_code not in acceptable_status:
                     res.raise_for_status()
                 # LJQ: 上报播放正常状态
