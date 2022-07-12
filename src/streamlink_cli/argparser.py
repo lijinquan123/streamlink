@@ -1407,11 +1407,14 @@ def build_parser():
     http.add_argument(
         "--error-http-status-codes",
         type=comma_list,
-        default=[403, 404],
+        default=[403,],
         help="""
                 Error HTTP status codes that are used to exit the program or stop retrying request.
-
-                Default is [403, 404].
+                Support HTTP status codes range, `T` is the separator
+                `600T700` means 600 to 700 are Error HTTP status codes;
+                `600T` means greater than 600 are Error HTTP status codes;
+                `T700` means less than 700 are Error HTTP status codes;
+                Default is [403,].
                 """
     )
 
