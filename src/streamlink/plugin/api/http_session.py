@@ -1,3 +1,5 @@
+import logging
+import threading
 import time
 
 import requests.adapters
@@ -9,6 +11,7 @@ from streamlink.packages.requests_file import FileAdapter
 from streamlink.plugin.api import useragents
 from streamlink.utils import parse_json, parse_xml
 
+logger = logging.getLogger(__name__)
 try:
     # We tell urllib3 to disable warnings about unverified HTTPS requests,
     # because in some plugins we have to do unverified requests intentionally.
@@ -60,7 +63,7 @@ class HTTPSession(Session):
         self._report_uri = None
         self._report_interval = 60
         self._stop_stream_playing = False
-        self._error_http_status_codes = 403, 404
+        self._error_http_status_codes = 403,
         self.headers['User-Agent'] = useragents.FIREFOX
         self.timeout = 20.0
 
@@ -84,25 +87,24 @@ class HTTPSession(Session):
     def report_uri(self, uri):
         self._report_uri = uri
 
-    def report_play_status(self, status: bool):
+    def report_play_status(self, data: dict):
         """
         上报当前播放状态
         """
-        import threading
-        threading.Thread(target=self.report_play_status_block, args=(status,), daemon=True).start()
+        threading.Thread(target=self.report_play_status_block, args=(data,), daemon=True).start()
 
-    def report_play_status_block(self, status: bool):
+    def report_play_status_block(self, data: dict):
         """
         上报当前播放状态
         """
         if self.report_uri and self.report_interval:
-            if time.time() - type(self).last_report_interval > 60 or not status:
+            if time.time() - type(self).last_report_interval > 60 or not data.get('status'):
                 type(self).last_report_interval = time.time()
-                # 为避免循环上报, 使用 requests.request 而非 self.request
                 try:
-                    requests.request('get', self.report_uri, params={'status': status})
-                except (requests.exceptions.RequestException, Exception):
-                    """播放状态上报异常, 不处理"""
+                    resp = self.request('post', self.report_uri, json=data, dont_report=True)
+                    logger.trace(f"{self.report_uri}, response: {resp.text}")
+                except (requests.exceptions.RequestException, Exception) as e:
+                    logger.trace(e, exc_info=True)
                 type(self).last_report_interval = time.time()
 
     # 添加错误码和停止流
@@ -120,7 +122,29 @@ class HTTPSession(Session):
 
     @error_http_status_codes.setter
     def error_http_status_codes(self, status_codes):
-        self._error_http_status_codes = status_codes
+        """
+        错误状态码解析错误范围
+        """
+        real_status_codes = []
+        for status_code in status_codes:
+            status_code = status_code.strip().upper()
+            if not status_code:
+                raise ValueError(f"--error-http-status-codes 不允许: {repr(status_code)}, 至少需要一个数字")
+            if 'T' in status_code:
+                status_codes_ = []
+                num = 0
+                for digit in status_code.split('T', 1):
+                    digit = digit.strip() or None
+                    if digit is not None:
+                        digit = int(digit)
+                        num += 1
+                    status_codes_.append(digit)
+                if num == 0:
+                    raise ValueError(f"--error-http-status-codes 不允许: {repr(status_code)}, 至少需要一个数字")
+                real_status_codes.append(status_codes_)
+            else:
+                real_status_codes.append(int(status_code))
+        self._error_http_status_codes = real_status_codes
 
     # LJQ: BLOCK}
     @classmethod
@@ -186,6 +210,25 @@ class HTTPSession(Session):
         """Resolves any redirects and returns the final URL."""
         return self.get(url, stream=True).url
 
+    def is_error_status_codes(self, status_code):
+        """
+        错误状态码支持范围报错
+        """
+        for status_codes in self.error_http_status_codes:
+            if isinstance(status_codes, int) and status_code == status_codes:
+                return True
+            elif isinstance(status_codes, list):
+                start, end = status_codes
+                if start is None:
+                    if status_code < end:
+                        return True
+                elif end is None:
+                    if status_code >= start:
+                        return True
+                elif start <= status_code < end:
+                    return True
+        return False
+
     def request(self, method, url, *args, **kwargs):
         acceptable_status = kwargs.pop("acceptable_status", [])
         exception = kwargs.pop("exception", PluginError)
@@ -199,6 +242,7 @@ class HTTPSession(Session):
         total_retries = kwargs.pop("retries", 0)
         retry_backoff = kwargs.pop("retry_backoff", 0.3)
         retry_max_backoff = kwargs.pop("retry_max_backoff", 10.0)
+        dont_report = kwargs.pop("dont_report", False)
         retries = 0
 
         if session:
@@ -218,11 +262,17 @@ class HTTPSession(Session):
                     *args,
                     **kwargs
                 )
-                # print(f'{res.status_code}  {res.request.method}  {res.elapsed.total_seconds():.3f} s  {res.headers.get("Content-Length", 0) or len(res.content)} bytes  {res.url}  {res.request.headers}')
+                logger.trace(f'{res.status_code} {res.request.method} {res.elapsed.total_seconds():.3f}s '
+                             f'{res.headers.get("Content-Length", 0) or len(res.content)}bytes {res.url} {res.request.headers}')
                 if raise_for_status and res.status_code not in acceptable_status:
                     res.raise_for_status()
+                if self.is_error_status_codes(res.status_code):
+                    raise HTTPStatusCodesError(res.status_code)
+                if 'm3u8' in res.url:
+                    logger.trace(res.text[-300:])
                 # LJQ: 上报播放正常状态
-                self.report_play_status(True)
+                if not dont_report:
+                    self.report_play_status({'status': True, 'code': res.status_code})
                 break
             except KeyboardInterrupt:
                 raise
@@ -230,11 +280,13 @@ class HTTPSession(Session):
                 # LJQ: 错误状态码停止继续播放流或者不再重试请求
                 if res is None:
                     # LJQ: 上报播放异常状态: 请求未响应
-                    self.report_play_status(None)
+                    if not dont_report:
+                        self.report_play_status({'status': None, 'code': None})
                 else:
                     # LJQ: 上报播放异常状态: 状态码异常
-                    self.report_play_status_block(False)
-                    if str(res.status_code) in self.error_http_status_codes:
+                    if not dont_report:
+                        self.report_play_status_block({'status': False, 'code': res.status_code})
+                    if self.is_error_status_codes(res.status_code):
                         if self.stop_stream_playing:
                             exception = HTTPStatusCodesError
                         err = exception(f"Unable to open URL: {url} ({res.status_code})")
