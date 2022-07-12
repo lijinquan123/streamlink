@@ -105,7 +105,7 @@ class HLSStreamWriter(SegmentedStreamWriter):
                 token = self.session.cache.get(key_uri)
                 if not token:
                     res = self.session.http.get(key_uri, exception=StreamError,
-                                                retries=self.retries,
+                                                retries=self.retries, dont_report=True,
                                                 **self.reader.request_params)
                     token = self.session.http.json(res)
                     self.session.cache.set(key_uri, token, expires=self.session.options.get('hls-token-period'))
@@ -286,7 +286,7 @@ class HLSStreamWorker(SegmentedStreamWorker):
                 token = self.session.cache.get(key_uri)
                 if not token:
                     res = self.session.http.get(key_uri, exception=StreamError,
-                                                retries=self.playlist_reload_retries,
+                                                retries=self.playlist_reload_retries, dont_report=True,
                                                 **self.reader.request_params)
                     token = self.session.http.json(res)
                     self.session.cache.set(key_uri, token, expires=self.session.options.get('hls-token-period'))
