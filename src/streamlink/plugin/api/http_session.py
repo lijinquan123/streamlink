@@ -60,10 +60,10 @@ class HTTPSession(Session):
 
     def __init__(self):
         super().__init__()
-        self._report_uri = None
-        self._report_interval = 60
-        self._stop_stream_playing = False
-        self._error_http_status_codes = 403,
+        self.report_uri = None
+        self.report_interval = 60
+        self.stop_stream_playing = False
+        self.error_http_status_codes = '403',
         self.headers['User-Agent'] = useragents.FIREFOX
         self.timeout = 20.0
 
@@ -127,7 +127,7 @@ class HTTPSession(Session):
         """
         real_status_codes = []
         for status_code in status_codes:
-            status_code = status_code.strip().upper()
+            status_code = str(status_code).strip().upper()
             if not status_code:
                 raise ValueError(f"--error-http-status-codes 不允许: {repr(status_code)}, 至少需要一个数字")
             if 'T' in status_code:
