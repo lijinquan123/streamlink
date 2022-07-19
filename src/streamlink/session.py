@@ -1,6 +1,7 @@
 import base64
 import logging
 import pkgutil
+import time
 from collections import OrderedDict
 from functools import lru_cache
 from socket import AF_INET, AF_INET6
@@ -66,6 +67,7 @@ class Streamlink:
             "stream-segment-threads": 1,
             "stream-segment-timeout": 10.0,
             "stream-timeout": 60.0,
+            "stream-max-playback-duration": 0,
             "subprocess-errorlog": False,
             "subprocess-errorlog-path": None,
             "ffmpeg-ffmpeg": None,
@@ -85,6 +87,7 @@ class Streamlink:
             self.options.update(options)
         self.plugins = OrderedDict({})
         self.load_builtin_plugins()
+        self.start_playback_time = time.time()
 
     def set_option(self, key, value):
         """Sets general options used by plugins and streams originating
@@ -258,6 +261,10 @@ class Streamlink:
                                  stream, default: ``60.0``.
                                  General option used by streams not
                                  covered by other options.
+
+        stream-max-playback-duration    (float) Duration of playing stream, default: ``0``.
+                                 Zero is unlimited playback time.
+                                 Otherwise, it will stop playing stream if playback time is greater than the max duration.
 
         locale                   (str) Locale setting, in the RFC 1766 format
                                  eg. en_US or es_ES

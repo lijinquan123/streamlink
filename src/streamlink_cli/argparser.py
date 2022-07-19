@@ -1134,6 +1134,19 @@ def build_parser():
 
         Default is 60.0.
         """)
+    # LJQ: add argument, stream-max-playback-duration
+    transport.add_argument(
+        "--stream-max-playback-duration",
+        type=num(float, min=0),
+        metavar="PLAYBACK DURATION",
+        help="""
+        Duration of playing stream.
+
+        Zero is unlimited playback time.
+        Otherwise, it will stop playing stream if playback time is greater than the max duration.
+
+        Default is 0.
+        """)
     transport.add_argument(
         "--subprocess-cmdline",
         action="store_true",
@@ -1407,7 +1420,7 @@ def build_parser():
     http.add_argument(
         "--error-http-status-codes",
         type=comma_list,
-        default=[403,],
+        default=[403, ],
         help="""
                 Error HTTP status codes that are used to exit the program or stop retrying request.
                 Support HTTP status codes range, `T` is the separator

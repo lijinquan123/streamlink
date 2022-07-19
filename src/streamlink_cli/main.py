@@ -849,6 +849,10 @@ def setup_options():
     if args.error_http_status_codes:
         streamlink.set_option("error-http-status-codes", args.error_http_status_codes)
 
+    # LJQ: add stream-max-playback-duration
+    if args.stream_max_playback_duration:
+        streamlink.set_option("stream-max-playback-duration", args.stream_max_playback_duration)
+
     if args.stream_segment_attempts:
         streamlink.set_option("stream-segment-attempts", args.stream_segment_attempts)
 
