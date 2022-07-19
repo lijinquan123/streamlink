@@ -11,14 +11,10 @@ from streamlink.compat import is_win32
 if is_win32:
     from ctypes import windll, cast, c_ulong, c_void_p, byref
 
-
 log = logging.getLogger(__name__)
 
 _lock = threading.Lock()
 _id = 0
-
-# LJQ: 删除/tmp目录下所有1天前、未访问、以streamlinkpipe-开头的fifo文件
-os.system(f'find {tempfile.gettempdir()}/streamlinkpipe-* -type p -atime +1 -print0 |xargs -0 rm -rf')
 
 
 class NamedPipeBase(abc.ABC):

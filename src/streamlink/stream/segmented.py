@@ -1,5 +1,7 @@
 import logging
 import queue
+import sys
+import time
 from concurrent import futures
 from concurrent.futures.thread import ThreadPoolExecutor
 from sys import version_info
@@ -34,6 +36,39 @@ class CompatThreadPoolExecutor(ThreadPoolExecutor):
             if wait:
                 for t in self._threads:
                     t.join()
+
+
+class SegmentedStreamStopper(Thread):
+    """The stopper thread.
+
+    This thread is responsible for stopping the stream
+    if playback time greater than max playback duration
+    """
+
+    def __init__(self, reader):
+        self.reader = reader
+        self.stream = reader.stream
+        self.session = reader.stream.session
+
+        Thread.__init__(self, name="Thread-{0}".format(self.__class__.__name__))
+        self.daemon = True
+        self.stream_max_playback_duration = self.session.options.get("stream-max-playback-duration")
+        if self.stream_max_playback_duration is None:
+            self.stream_max_playback_duration = 0
+
+    def run(self):
+        log.debug(f'stream_max_playback_duration: {self.stream_max_playback_duration}')
+        if self.stream_max_playback_duration > 0:
+            sleep_time = self.stream_max_playback_duration - (time.time() - self.session.start_playback_time)
+            log.warning(f'Stopped playback after {sleep_time} seconds!')
+            time.sleep(sleep_time)
+            self.close()
+
+    def close(self):
+        """Shuts down the thread."""
+        self.reader.close()
+        log.warning("Closing stopper thread")
+        sys.exit(1)
 
 
 class SegmentedStreamWorker(Thread):
@@ -203,6 +238,7 @@ class SegmentedStreamWriter(Thread):
 class SegmentedStreamReader(StreamIO):
     __worker__ = SegmentedStreamWorker
     __writer__ = SegmentedStreamWriter
+    __stopper__ = SegmentedStreamStopper
 
     def __init__(self, stream, timeout=None):
         StreamIO.__init__(self)
@@ -219,9 +255,11 @@ class SegmentedStreamReader(StreamIO):
         self.buffer = RingBuffer(buffer_size)
         self.writer = self.__writer__(self)
         self.worker = self.__worker__(self)
+        self.stopper = self.__stopper__(self)
 
         self.writer.start()
         self.worker.start()
+        self.stopper.start()
 
     def close(self):
         self.worker.close()
