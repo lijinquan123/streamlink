@@ -294,7 +294,7 @@ class HTTPSession(Session):
                         raise err
 
                 if retries >= total_retries:
-                    err = exception(f"Unable to open URL: {url} ({rerr})")
+                    err = HTTPStatusCodesError(f"Unable to open URL: {url} ({rerr})")
                     err.err = rerr
                     raise err
                 retries += 1

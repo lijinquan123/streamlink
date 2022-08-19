@@ -221,7 +221,7 @@ class SegmentedStreamWriter(Thread):
                 except futures.CancelledError:
                     break
                 except HTTPStatusCodesError as e:
-                    log.error(f"Failed to open segment {segment.num}: {e}")
+                    log.error(f"Failed to open segment: {e}")
                     # stop all waiting segments to request
                     self.futures.queue.clear()
                     # stop reloading playlist
