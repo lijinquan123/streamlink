@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+from contextlib import suppress
 
 import requests.adapters
 import urllib3
@@ -100,11 +101,8 @@ class HTTPSession(Session):
         if self.report_uri and self.report_interval:
             if time.time() - type(self).last_report_interval > 60 or not data.get('status'):
                 type(self).last_report_interval = time.time()
-                try:
-                    resp = self.request('post', self.report_uri, json=data, dont_report=True)
-                    logger.trace(f"{self.report_uri}, response: {resp.text}")
-                except (requests.exceptions.RequestException, Exception) as e:
-                    logger.trace(e, exc_info=True)
+                with suppress(Exception):
+                    self.request('post', self.report_uri, json=data, dont_report=True)
                 type(self).last_report_interval = time.time()
 
     # 添加错误码和停止流
@@ -268,8 +266,6 @@ class HTTPSession(Session):
                     res.raise_for_status()
                 if self.is_error_status_codes(res.status_code):
                     raise HTTPStatusCodesError(res.status_code)
-                if 'm3u8' in res.url:
-                    logger.trace(res.text[-300:])
                 # LJQ: 上报播放正常状态
                 if not dont_report:
                     self.report_play_status({'status': True, 'code': res.status_code})
