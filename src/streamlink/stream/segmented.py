@@ -1,4 +1,6 @@
+import hashlib
 import logging
+import os
 import queue
 import sys
 import time
@@ -233,6 +235,24 @@ class SegmentedStreamWriter(Thread):
                 break
 
         self.close()
+
+    @staticmethod
+    def has_drm_decrypted(encrypt_file: str, decrypt_file: str):
+        # AES-CBC模式必须使用填充,因此加密后的文件长度比解密的文件长度大.
+        # AES-CTR模式不使用填充,因此加密后的文件长度和解密的文件长度相同.
+        # 因此通过`截取文件后10M并比较MD5值`的方式来判断是否解密成功
+        encrypt_size = os.path.getsize(encrypt_file)
+        decrypt_size = os.path.getsize(decrypt_file)
+        if encrypt_size != decrypt_size:
+            return True
+        read_size = 10 * 1024 * 1024
+        with open(encrypt_file, mode='rb') as f:
+            f.seek(max(0, encrypt_size - read_size))
+            encrypt_md5 = hashlib.md5(f.read()).hexdigest()
+        with open(decrypt_file, mode='rb') as f:
+            f.seek(max(0, decrypt_size - read_size))
+            decrypt_md5 = hashlib.md5(f.read()).hexdigest()
+        return encrypt_md5 != decrypt_md5
 
 
 class SegmentedStreamReader(StreamIO):

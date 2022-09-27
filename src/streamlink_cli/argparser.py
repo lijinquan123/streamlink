@@ -1134,6 +1134,20 @@ def build_parser():
 
         Default is 60.0.
         """)
+    # LJQ: add argument, drm-decrypt-key
+    transport.add_argument(
+        "--drm-decrypt-key",
+        metavar="API",
+        help="""
+        The decrypt key for decrypting DRM encrypted stream.
+        """)
+    # LJQ: add argument, drm-temp-dir
+    transport.add_argument(
+        "--drm-temp-dir",
+        metavar="DIR",
+        help="""
+        The dir for saving all temporary DRM data, including encryption and decryption data.
+        """)
     # LJQ: add argument, stream-max-playback-duration
     transport.add_argument(
         "--stream-max-playback-duration",

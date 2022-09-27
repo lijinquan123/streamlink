@@ -37,5 +37,10 @@ class HTTPStatusCodesError(IOError):
     """HTTP status codes error."""
 
 
+# LJQ: DRM解密失败触发此类
+class DRMDecryptionError(StreamError):
+    """DRM decryption error."""
+
+
 __all__ = ["StreamlinkError", "PluginError", "NoPluginError",
-           "NoStreamsError", "StreamError", "HTTPStatusCodesError"]
+           "NoStreamsError", "StreamError", "HTTPStatusCodesError", "DRMDecryptionError"]
