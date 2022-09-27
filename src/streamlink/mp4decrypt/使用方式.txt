@@ -1,0 +1,3 @@
+mp4decrypt_linux --key $decrypt_key $encrypt_path $output_path
+
+如: mp4decrypt_linux --key 1acc9caac70840faa59f821bfee20725:7c000f05947c89bb16c394c7461d9140 encrypt.mp4 decrypt.mp4

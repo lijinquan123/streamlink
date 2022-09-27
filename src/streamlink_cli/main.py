@@ -849,6 +849,14 @@ def setup_options():
     if args.error_http_status_codes:
         streamlink.set_option("error-http-status-codes", args.error_http_status_codes)
 
+    # LJQ: add drm-decrypt-key
+    if args.drm_decrypt_key:
+        streamlink.set_option("drm-decrypt-key", args.drm_decrypt_key)
+
+    # LJQ: add drm-temp-dir
+    if args.drm_temp_dir:
+        streamlink.set_option("drm-temp-dir", args.drm_temp_dir)
+
     # LJQ: add stream-max-playback-duration
     if args.stream_max_playback_duration:
         streamlink.set_option("stream-max-playback-duration", args.stream_max_playback_duration)

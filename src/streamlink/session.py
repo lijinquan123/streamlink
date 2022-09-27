@@ -67,6 +67,8 @@ class Streamlink:
             "stream-segment-threads": 1,
             "stream-segment-timeout": 10.0,
             "stream-timeout": 60.0,
+            "drm-decrypt-key": None,
+            "drm-temp-dir": None,
             "stream-max-playback-duration": 0,
             "subprocess-errorlog": False,
             "subprocess-errorlog-path": None,
@@ -261,6 +263,10 @@ class Streamlink:
                                  stream, default: ``60.0``.
                                  General option used by streams not
                                  covered by other options.
+
+        drm-decrypt-key          (str) The decrypt key for decrypting DRM encrypted stream.
+
+        drm-temp-dir             (str) The dir for saving all temporary DRM data, including encryption and decryption data.
 
         stream-max-playback-duration    (float) Duration of playing stream, default: ``0``.
                                  Zero is unlimited playback time.

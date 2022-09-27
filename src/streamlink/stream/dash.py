@@ -3,12 +3,15 @@ import datetime
 import itertools
 import logging
 import os.path
+import platform
 from collections import defaultdict
+from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
 import requests
 
 from streamlink import PluginError, StreamError
+from streamlink.exceptions import DRMDecryptionError
 from streamlink.stream.dash_manifest import MPD, freeze_timeline, sleep_until, sleeper, utc
 from streamlink.stream.ffmpegmux import FFMPEGMuxer
 from streamlink.stream.http import normalize_key, valid_args
@@ -21,12 +24,23 @@ log = logging.getLogger(__name__)
 
 
 class DASHStreamWriter(SegmentedStreamWriter):
+
     def __init__(self, reader, *args, **kwargs):
         options = reader.stream.session.options
         kwargs["retries"] = options.get("dash-segment-attempts")
         kwargs["threads"] = options.get("dash-segment-threads")
         kwargs["timeout"] = options.get("dash-segment-timeout")
         SegmentedStreamWriter.__init__(self, reader, *args, **kwargs)
+        self.has_initial_data = False
+        self.decrypt_key = options.get("drm-decrypt-key")
+        self.drm_dir = Path(options.get("drm-temp-dir") or '/tmp/drm')
+        self.drm_dir.mkdir(exist_ok=True, parents=True)
+        parent_dir = Path(__file__).parent.parent
+        self.decrypt_programs = {
+            'Windows': (parent_dir / 'mp4decrypt/mp4decrypt.exe').as_posix(),
+            'Linux': (parent_dir / 'mp4decrypt/mp4decrypt_linux').as_posix(),
+            'Darwin': (parent_dir / 'mp4decrypt/mp4decrypt_mac').as_posix(),
+        }
 
     def fetch(self, segment, retries=None):
         if self.closed or not retries:
@@ -60,13 +74,38 @@ class DASHStreamWriter(SegmentedStreamWriter):
             return self.fetch(segment, retries - 1)
 
     def write(self, segment, res, chunk_size=8192):
-        for chunk in res.iter_content(chunk_size):
-            if not self.closed:
-                self.reader.buffer.write(chunk)
-            else:
-                log.warning("Download of segment: {} aborted".format(segment.url))
-                return
-
+        if not self.decrypt_key:
+            for chunk in res.iter_content(chunk_size):
+                if not self.closed:
+                    self.reader.buffer.write(chunk)
+                else:
+                    log.warning("Download of segment: {} aborted".format(segment.url))
+                    return
+        else:
+            try:
+                if not self.closed:
+                    encrypt_file = self.drm_dir / f'{self.ident}_encrypt.tmp'
+                    decrypt_file = self.drm_dir / f'{self.ident}_decrypt.tmp'
+                    head_file = self.drm_dir / f'{self.ident}_head.tmp'
+                    encrypt_file.write_bytes(res.content)
+                    if segment.init:
+                        self.has_initial_data = True
+                        head_file.write_bytes(res.content)
+                    command = f'{self.decrypt_programs[platform.system()]} --key "{self.decrypt_key}" "{encrypt_file.as_posix()}" "{decrypt_file.as_posix()}"'
+                    if self.has_initial_data:
+                        if not head_file.exists():
+                            raise FileNotFoundError(head_file)
+                        command += f' --fragments-info "{head_file.as_posix()}"'
+                    os.system(command)
+                    if not (segment.init or self.has_drm_decrypted(encrypt_file, decrypt_file)):
+                        raise DRMDecryptionError(f"加解密文件相同, decrypt_key: {self.decrypt_key}")
+                    self.reader.buffer.write(decrypt_file.read_bytes())
+                else:
+                    log.warning("Download of segment: {} aborted".format(segment.url))
+                    return
+            except Exception as e:
+                log.exception(f"DRM解密模块错误, 停止DASHStreamWriter: {e}")
+                self.close()
         log.debug("Download of segment: {} complete".format(segment.url))
 
 
@@ -195,7 +234,7 @@ class DASHStream(Stream):
 
         # Search for suitable video and audio representations
         for aset in mpd.periods[0].adaptationSets:
-            if aset.contentProtection:
+            if aset.contentProtection and not session.options.get("drm-decrypt-key"):
                 raise PluginError("{} is protected by DRM".format(url))
             for rep in aset.representations:
                 if rep.mimeType.startswith("video"):
