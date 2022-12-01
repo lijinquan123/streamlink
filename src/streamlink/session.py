@@ -11,7 +11,7 @@ import requests.packages.urllib3.util.connection as urllib3_connection
 from requests.packages.urllib3.util.connection import allowed_gai_family
 
 from streamlink import __version__, plugins
-from streamlink.cache import Cache
+from streamlink.cache import Cache, MemoryCache
 from streamlink.compat import is_win32
 from streamlink.exceptions import NoPluginError, PluginError
 from streamlink.logger import StreamlinkLogger
@@ -84,6 +84,7 @@ class Streamlink:
         })
         # felix add update headers cookies
         self.cache = Cache(filename="StreamlinkSession.json")
+        self.memory_cache = MemoryCache()
 
         if options:
             self.options.update(options)

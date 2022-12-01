@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 class HLSPlugin(Plugin):
-    _url_re = re.compile(r"(hls(?:variant)?://)?(.+(?:\.m3u8)?.*)")
+    _url_re = re.compile(r"(hls\w*(?:variant)?://)?(.+(?:\.m3u8)?.*)")
 
     @classmethod
     def priority(cls, url):
@@ -41,8 +41,11 @@ class HLSPlugin(Plugin):
     def _get_streams(self):
         url, params = parse_url_params(self.url)
         urlnoproto = self._url_re.match(url).group(2)
-        urlnoproto = update_scheme("http://", urlnoproto)
-
+        if urlparse(url).scheme == 'hls':
+            scheme = "http"
+        else:
+            scheme = "https"
+        urlnoproto = update_scheme(f'{scheme}://', urlnoproto)
         log.debug("URL={0}; params={1}".format(urlnoproto, params))
         streams = HLSStream.parse_variant_playlist(self.session, urlnoproto, **params)
         if not streams:

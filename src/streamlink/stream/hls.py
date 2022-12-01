@@ -2,6 +2,7 @@ import base64
 import logging
 import re
 import struct
+import time
 from collections import OrderedDict, defaultdict, namedtuple
 from threading import Event
 from urllib.parse import urlparse
@@ -91,7 +92,10 @@ class HLSStreamWriter(SegmentedStreamWriter):
         request_params = dict(self.reader.request_params)
         headers = request_params.pop("headers", {})
         cookies = request_params.pop("cookies", {})
-        if self.token_uri_override:
+        if (
+            self.token_uri_override
+            and time.time() - self.session.start_playback_time >= self.session.options.get('hls-token-period')
+        ):
             p = urlparse(self.token_uri_override)
             key_uri = LazyFormatter.format(
                 self.token_uri_override,
@@ -102,13 +106,13 @@ class HLSStreamWriter(SegmentedStreamWriter):
                 query=p.query,
             )
             try:
-                token = self.session.cache.get(key_uri)
+                token = self.session.memory_cache.get(key_uri)
                 if not token:
                     res = self.session.http.get(key_uri, exception=StreamError,
                                                 retries=self.retries, dont_report=True,
                                                 **self.reader.request_params)
                     token = self.session.http.json(res)
-                    self.session.cache.set(key_uri, token, expires=self.session.options.get('hls-token-period'))
+                    self.session.memory_cache.set(key_uri, token, expires=self.session.options.get('hls-token-period'))
                     log.debug(f"create_request_params save to cache {key_uri} {token}")
                 else:
                     log.debug(f"create_request_params load from cache {key_uri} {token}")
@@ -272,7 +276,10 @@ class HLSStreamWorker(SegmentedStreamWorker):
         request_params = dict(self.reader.request_params)
         headers = request_params.pop("headers", {})
         cookies = request_params.pop("cookies", {})
-        if self.token_uri_override:
+        if (
+            self.token_uri_override
+            and time.time() - self.session.start_playback_time >= self.session.options.get('hls-token-period')
+        ):
             p = urlparse(self.token_uri_override)
             key_uri = LazyFormatter.format(
                 self.token_uri_override,
@@ -283,13 +290,13 @@ class HLSStreamWorker(SegmentedStreamWorker):
                 query=p.query,
             )
             try:
-                token = self.session.cache.get(key_uri)
+                token = self.session.memory_cache.get(key_uri)
                 if not token:
                     res = self.session.http.get(key_uri, exception=StreamError,
                                                 retries=self.playlist_reload_retries, dont_report=True,
                                                 **self.reader.request_params)
                     token = self.session.http.json(res)
-                    self.session.cache.set(key_uri, token, expires=self.session.options.get('hls-token-period'))
+                    self.session.memory_cache.set(key_uri, token, expires=self.session.options.get('hls-token-period'))
                     log.debug(f"reload_playlist save to cache {key_uri} {token}")
                 else:
                     log.debug(f"reload_playlist load from cache {key_uri} {token}")
