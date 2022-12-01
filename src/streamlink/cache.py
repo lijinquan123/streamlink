@@ -113,4 +113,82 @@ class Cache:
         return ret
 
 
-__all__ = ["Cache"]
+class MemoryCache:
+    """Caches Python values as JSON and prunes expired entries."""
+
+    def __init__(self, key_prefix=""):
+        self.key_prefix = key_prefix
+        self._cache = {}
+
+    def _load(self):
+        return
+
+    def _prune(self):
+        now = time()
+        pruned = []
+
+        for key, value in self._cache.items():
+            expires = value.get("expires", now)
+            if expires <= now:
+                pruned.append(key)
+
+        for key in pruned:
+            self._cache.pop(key, None)
+
+        return len(pruned) > 0
+
+    def _save(self):
+        return
+
+    def set(self, key, value, expires=60 * 60 * 24 * 7, expires_at=None):
+        self._load()
+        self._prune()
+
+        if self.key_prefix:
+            key = "{0}:{1}".format(self.key_prefix, key)
+
+        if expires_at is None:
+            expires += time()
+        else:
+            try:
+                expires = mktime(expires_at.timetuple())
+            except OverflowError:
+                expires = 0
+
+        self._cache[key] = dict(value=value, expires=expires)
+        self._save()
+
+    def get(self, key, default=None):
+        self._load()
+
+        if self._prune():
+            self._save()
+
+        if self.key_prefix:
+            key = "{0}:{1}".format(self.key_prefix, key)
+
+        if key in self._cache and "value" in self._cache[key]:
+            return self._cache[key]["value"]
+        else:
+            return default
+
+    def get_all(self):
+        ret = {}
+        self._load()
+
+        if self._prune():
+            self._save()
+
+        for key, value in self._cache.items():
+            if self.key_prefix:
+                prefix = self.key_prefix + ":"
+            else:
+                prefix = ""
+            if key.startswith(prefix):
+                okey = key[len(prefix):]
+                ret[okey] = value["value"]
+
+        return ret
+
+
+__all__ = ["Cache", "MemoryCache"]
