@@ -121,8 +121,8 @@ class HLSStreamWriter(SegmentedStreamWriter):
                 token = {}
             log.debug(f"create_request_params token {token}")
 
-            token_headers = token.pop("headers", {})
-            token_cookies = token.pop("cookies", {})
+            token_headers = token.get("headers", {})
+            token_cookies = token.get("cookies", {})
             headers.update(token_headers)
             cookies.update(token_cookies)
 
@@ -305,8 +305,8 @@ class HLSStreamWorker(SegmentedStreamWorker):
                 token = {}
             log.debug(f"reload_playlist {token}")
 
-            token_headers = token.pop("headers", {})
-            token_cookies = token.pop("cookies", {})
+            token_headers = token.get("headers", {})
+            token_cookies = token.get("cookies", {})
             headers.update(token_headers)
             cookies.update(token_cookies)
             request_params["headers"] = headers
@@ -315,7 +315,7 @@ class HLSStreamWorker(SegmentedStreamWorker):
                 request_params["cookies"] = cookiejar
 
             # LJQ: 替换为正确的索引链接 BLOCK{
-            url = token.pop("url", '')
+            url = token.get("url", '')
             if url:
                 self.stream.url = url
             # LJQ: BLOCK}
