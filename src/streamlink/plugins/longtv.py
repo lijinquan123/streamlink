@@ -40,7 +40,8 @@ class LongTVM3U8Parser(hls_playlist.M3U8Parser):
 
 
 class LongTV(HLSPlugin):
-    _url_re = re.compile(r"(longtv(?:variant)?://)?(.+(?:\.m3u8)?.*)")
+    _url_re = re.compile(r"(longtv\w*(?:variant)?://)?(.+(?:\.m3u8)?.*)")
+    _tls_re = re.compile(r"(longtv(?P<TLS>\w*)(?:variant)?://).*")
 
     def __init__(self, url):
         hls_playlist.load = partial(hls_playlist.load, parser=LongTVM3U8Parser)
