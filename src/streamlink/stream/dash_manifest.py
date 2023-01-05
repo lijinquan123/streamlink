@@ -24,6 +24,7 @@ else:
         def dst(self, dt):
             return datetime.timedelta(0)
 
+
     utc = UTC()
 
 log = logging.getLogger(__name__)
@@ -434,14 +435,20 @@ class SegmentTemplate(MPDNode):
         self.period = list(self.walk_back(Period))[0]
 
         # children
-        self.segmentTimeline = self.only_child(SegmentTimeline)
+        self.segmentTimeline: SegmentTimeline = self.only_child(SegmentTimeline)
 
     def segments(self, **kwargs):
-        if kwargs.pop("init", True):
+        init = kwargs.pop("init", True)
+        if init:
             init_url = self.format_initialization(**kwargs)
             if init_url:
                 yield Segment(init_url, 0, True, False)
-        for media_url, available_at in self.format_media(**kwargs):
+        segments = self.format_media(**kwargs)
+        if init:
+            segments = list(segments)[-kwargs['live_edge']:]
+        for media_url, available_at in segments:
+            # 测试用
+            # print('yield', media_url, self.duration_seconds, False, True, available_at)
             yield Segment(media_url, self.duration_seconds, False, True, available_at)
 
     def make_url(self, url):
@@ -514,10 +521,10 @@ class SegmentTemplate(MPDNode):
                 self.parent.id = self.parent.mimeType
             log.debug("Generating segment timeline for {0} playlist (id={1}))".format(self.root.type, self.parent.id))
             if self.root.type == "dynamic":
-                # if there is no delay, use a delay of 3 seconds
-                suggested_delay = datetime.timedelta(seconds=(self.root.suggestedPresentationDelay.total_seconds()
-                                                              if self.root.suggestedPresentationDelay
-                                                              else 3))
+                # # if there is no delay, use a delay of 3 seconds
+                # suggested_delay = datetime.timedelta(seconds=(self.root.suggestedPresentationDelay.total_seconds()
+                #                                               if self.root.suggestedPresentationDelay
+                #                                               else 3))
                 publish_time = self.root.publishTime or epoch_start
 
                 # transform the time line in to a segment list
@@ -531,7 +538,10 @@ class SegmentTemplate(MPDNode):
                     duration = datetime.timedelta(seconds=segment.d / self.timescale)
 
                     # once the suggested_delay is reach stop
-                    if self.root.timelines[self.parent.id] == -1 and publish_time - available_at >= suggested_delay:
+                    # if self.root.timelines[self.parent.id] == -1 and publish_time - available_at >= suggested_delay:
+                    # suggested_delay会导致每次都取最后一个切片,放弃其他切片
+                    # t会取所有大于t的切片,防止卡顿
+                    if self.root.timelines[self.parent.id] > segment.t:
                         break
 
                     timeline.append((url, available_at, segment.t))
@@ -602,7 +612,7 @@ class Representation(MPDNode):
 
         # segmentBase = self.segmentBase or self.walk_back_get_attr("segmentBase")
         segmentLists = self.segmentList or self.walk_back_get_attr("segmentList")
-        segmentTemplate = self.segmentTemplate or self.walk_back_get_attr("segmentTemplate")
+        segmentTemplate: SegmentTemplate = self.segmentTemplate or self.walk_back_get_attr("segmentTemplate")
 
         if segmentTemplate:
             for segment in segmentTemplate.segments(RepresentationID=self.id,

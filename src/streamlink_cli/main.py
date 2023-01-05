@@ -748,6 +748,9 @@ def setup_options():
     if args.ipv6:
         streamlink.set_option("ipv6", args.ipv6)
 
+    if args.dash_live_edge:
+        streamlink.set_option("dash-live-edge", args.dash_live_edge)
+
     if args.hls_live_edge:
         streamlink.set_option("hls-live-edge", args.hls_live_edge)
 

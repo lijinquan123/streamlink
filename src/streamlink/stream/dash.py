@@ -12,7 +12,7 @@ import requests
 
 from streamlink import PluginError, StreamError
 from streamlink.exceptions import DRMDecryptionError
-from streamlink.stream.dash_manifest import MPD, freeze_timeline, sleep_until, sleeper, utc
+from streamlink.stream.dash_manifest import MPD, Representation, freeze_timeline, sleep_until, sleeper, utc
 from streamlink.stream.ffmpegmux import FFMPEGMuxer
 from streamlink.stream.http import normalize_key, valid_args
 from streamlink.stream.segmented import SegmentedStreamReader, SegmentedStreamWorker, SegmentedStreamWriter
@@ -114,10 +114,11 @@ class DASHStreamWorker(SegmentedStreamWorker):
         SegmentedStreamWorker.__init__(self, *args, **kwargs)
         self.mpd = self.stream.mpd
         self.period = self.stream.period
+        self.live_edge = self.session.options.get("dash-live-edge")
 
     @staticmethod
     def get_representation(mpd, representation_id, mime_type):
-        for aset in mpd.periods[0].adaptationSets:
+        for aset in mpd.periods[-1].adaptationSets:
             for rep in aset.representations:
                 if rep.id == representation_id and rep.mimeType == mime_type:
                     return rep
@@ -127,16 +128,17 @@ class DASHStreamWorker(SegmentedStreamWorker):
         back_off_factor = 1
         while not self.closed:
             # find the representation by ID
-            representation = self.get_representation(self.mpd, self.reader.representation_id, self.reader.mime_type)
+            representation: Representation = self.get_representation(
+                self.mpd, self.reader.representation_id, self.reader.mime_type)
             refresh_wait = max(self.mpd.minimumUpdatePeriod.total_seconds(),
-                               self.mpd.periods[0].duration.total_seconds()) or 5
+                               self.mpd.periods[-1].duration.total_seconds()) or 5
 
             if self.mpd.type == "static":
                 refresh_wait = 5
 
             with sleeper(refresh_wait * back_off_factor):
                 if representation:
-                    for segment in representation.segments(init=init):
+                    for segment in representation.segments(init=init, live_edge=self.live_edge):
                         if self.closed:
                             break
                         yield segment
@@ -233,7 +235,7 @@ class DASHStream(Stream):
         video, audio = [], []
 
         # Search for suitable video and audio representations
-        for aset in mpd.periods[0].adaptationSets:
+        for aset in mpd.periods[-1].adaptationSets:
             if aset.contentProtection and not session.options.get("drm-decrypt-key"):
                 raise PluginError("{} is protected by DRM".format(url))
             for rep in aset.representations:

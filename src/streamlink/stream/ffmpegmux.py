@@ -57,25 +57,27 @@ class FFMPEGMuxer(StreamIO):
     DEFAULT_VIDEO_CODEC = "copy"
     DEFAULT_AUDIO_CODEC = "copy"
 
-    @staticmethod
     def copy_to_pipe(self, stream, pipe):
-        log.debug("Starting copy to pipe: {0}".format(pipe.path))
-        pipe.open()
-        while not stream.closed:
-            try:
-                data = stream.read(8192)
-                if len(data):
-                    pipe.write(data)
-                else:
-                    break
-            except OSError:
-                log.error("Pipe copy aborted: {0}".format(pipe.path))
-                return
         try:
-            pipe.close()
-        except OSError:  # might fail closing, but that should be ok for the pipe
-            pass
-        log.debug("Pipe copy complete: {0}".format(pipe.path))
+            log.debug("Starting copy to pipe: {0}".format(pipe.path))
+            pipe.open()
+            while not stream.closed:
+                try:
+                    data = stream.read(8192)
+                    if len(data):
+                        pipe.write(data)
+                    else:
+                        break
+                except OSError:
+                    log.error("Pipe copy aborted: {0}".format(pipe.path))
+                    return
+            try:
+                pipe.close()
+            except OSError:  # might fail closing, but that should be ok for the pipe
+                pass
+            log.debug("Pipe copy complete: {0}".format(pipe.path))
+        finally:
+            self.close()
 
     def __init__(self, session, *streams, **options):
         if not self.is_usable(session):
@@ -86,7 +88,7 @@ class FFMPEGMuxer(StreamIO):
         self.streams = streams
 
         self.pipes = [NamedPipe() for _ in self.streams]
-        self.pipe_threads = [threading.Thread(target=self.copy_to_pipe, args=(self, stream, np))
+        self.pipe_threads = [threading.Thread(target=self.copy_to_pipe, args=(stream, np))
                              for stream, np in
                              zip(self.streams, self.pipes)]
 
