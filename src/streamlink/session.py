@@ -39,6 +39,7 @@ class Streamlink:
             "interface": None,
             "ipv4": False,
             "ipv6": False,
+            "dash-live-edge": 3,
             "hds-live-edge": 10.0,
             "hds-segment-attempts": 3,
             "hds-segment-threads": 1,
@@ -109,6 +110,10 @@ class Streamlink:
                                  This option overrides ipv6, default: ``False``
         ipv6                     (bool) Resolve address names to IPv6 only.
                                  This option overrides ipv4, default: ``False``
+
+        dash-live-edge           (int) How many segments from the end
+                                 to start live streams on, default: ``3``
+
         hds-live-edge            (float) Specify the time live HDS
                                  streams will start from the edge of
                                  stream, default: ``10.0``

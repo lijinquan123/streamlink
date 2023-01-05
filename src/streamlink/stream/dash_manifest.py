@@ -448,7 +448,7 @@ class SegmentTemplate(MPDNode):
             segments = list(segments)[-kwargs['live_edge']:]
         for media_url, available_at in segments:
             # 测试用
-            print('yield', media_url, self.duration_seconds, False, True, available_at)
+            # print('yield', media_url, self.duration_seconds, False, True, available_at)
             yield Segment(media_url, self.duration_seconds, False, True, available_at)
 
     def make_url(self, url):

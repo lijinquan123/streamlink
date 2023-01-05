@@ -756,6 +756,19 @@ def build_parser():
 
     transport = parser.add_argument_group("Stream transport options")
     transport.add_argument(
+        "--dash-live-edge",
+        type=num(int, min=0),
+        metavar="SEGMENTS",
+        help="""
+        How many segments from the end to start live DASH streams on.
+
+        The lower the value the lower latency from the source you will be,
+        but also increases the chance of buffering.
+
+        Default is 3.
+        """
+    )
+    transport.add_argument(
         "--hds-live-edge",
         type=num(float, min=0),
         metavar="SECONDS",
