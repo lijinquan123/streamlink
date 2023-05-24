@@ -5,7 +5,7 @@ import struct
 import time
 from collections import OrderedDict, defaultdict, namedtuple
 from threading import Event
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
@@ -41,6 +41,9 @@ class HLSStreamWriter(SegmentedStreamWriter):
         self.key_uri_override = options.get("hls-segment-key-uri")
         self.stream_data = options.get("hls-segment-stream-data")
 
+        self.segment_host = self.session.options.get("hls-segment-host")
+        if self.segment_host == 'same':
+            self.segment_host = urlparse(self.stream.url).hostname
         # felix add update headers cookies
         self.token_uri_override = options.get("hls-token-uri")
         if self.token_uri_override and not self.token_uri_override.startswith("http"):
@@ -148,8 +151,14 @@ class HLSStreamWriter(SegmentedStreamWriter):
             return
         try:
             request_params = self.create_request_params(sequence)
-
-            return self.session.http.get(sequence.segment.uri,
+            uri = sequence.segment.uri
+            if self.segment_host:
+                parse = urlparse(sequence.segment.uri)
+                netloc = parse.netloc.replace(parse.hostname, self.segment_host)
+                parse = list(parse)
+                parse[1] = netloc
+                uri = urlunparse(parse)
+            return self.session.http.get(uri,
                                          stream=(self.stream_data
                                                  and not sequence.segment.key),
                                          timeout=self.timeout,
