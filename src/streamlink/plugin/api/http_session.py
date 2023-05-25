@@ -1,4 +1,3 @@
-import logging
 import threading
 import time
 from contextlib import suppress
@@ -12,7 +11,6 @@ from streamlink.packages.requests_file import FileAdapter
 from streamlink.plugin.api import useragents
 from streamlink.utils import parse_json, parse_xml
 
-logger = logging.getLogger(__name__)
 try:
     # We tell urllib3 to disable warnings about unverified HTTPS requests,
     # because in some plugins we have to do unverified requests intentionally.
@@ -249,6 +247,7 @@ class HTTPSession(Session):
 
         while True:
             res = None
+            length = None
             try:
                 res = super().request(
                     method,
@@ -260,15 +259,16 @@ class HTTPSession(Session):
                     *args,
                     **kwargs
                 )
-                logger.trace(f'{res.status_code} {res.request.method} {res.elapsed.total_seconds():.3f}s '
-                             f'{res.headers.get("Content-Length", 0) or len(res.content)}bytes {res.url} {res.request.headers}')
+                length = res.headers.get("Content-Length", 0) or len(res.content)
+                print(f'{res.status_code} {res.request.method} {res.elapsed.total_seconds():.3f}s '
+                      f'{length}bytes {res.url} {res.request.headers}')
                 if raise_for_status and res.status_code not in acceptable_status:
                     res.raise_for_status()
-                if self.is_error_status_codes(res.status_code):
+                if self.is_error_status_codes(res.status_code) or not length:
                     raise HTTPStatusCodesError(res.status_code)
                 # LJQ: 上报播放正常状态
                 if not dont_report:
-                    self.report_play_status({'status': True, 'code': res.status_code})
+                    self.report_play_status({'status': True, 'code': res.status_code, 'length': length})
                 break
             except KeyboardInterrupt:
                 raise
@@ -277,11 +277,11 @@ class HTTPSession(Session):
                 if res is None:
                     # LJQ: 上报播放异常状态: 请求未响应
                     if not dont_report:
-                        self.report_play_status({'status': None, 'code': None})
+                        self.report_play_status({'status': None, 'code': None, 'length': length})
                 else:
                     # LJQ: 上报播放异常状态: 状态码异常
                     if not dont_report:
-                        self.report_play_status_block({'status': False, 'code': res.status_code})
+                        self.report_play_status_block({'status': False, 'code': res.status_code, 'length': length})
                     if self.is_error_status_codes(res.status_code):
                         if self.stop_stream_playing:
                             exception = HTTPStatusCodesError
