@@ -33,9 +33,9 @@ def longtv_decrypt(ciphertext):
 
 class LongTVM3U8Parser(hls_playlist.M3U8Parser):
     def uri(self, uri):
-        log.warning(f'{type(self).__class__.__name__}, uri: {uri}')
         if uri.isalnum():
             uri = longtv_decrypt(uri)
+        # log.warning(f'{type(self).__class__.__name__}, uri: {uri}')
         return super().uri(uri)
 
 
