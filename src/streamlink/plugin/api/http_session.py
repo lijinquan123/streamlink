@@ -259,7 +259,7 @@ class HTTPSession(Session):
                     *args,
                     **kwargs
                 )
-                length = res.headers.get("Content-Length", 0) or len(res.content)
+                length = int(res.headers.get("Content-Length", 0) or len(res.content))
                 print(f'{res.status_code} {res.request.method} {res.elapsed.total_seconds():.3f}s '
                       f'{length}bytes {res.url} {res.request.headers}')
                 if raise_for_status and res.status_code not in acceptable_status:
