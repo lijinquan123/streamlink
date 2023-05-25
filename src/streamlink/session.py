@@ -48,6 +48,7 @@ class Streamlink:
             "hls-live-edge": 3,
             # LJQ 设置 ts-url-add-m3u-url-params 默认值
             "ts-url-add-m3u-url-params": False,
+            "hls-segment-host": None,
             "hls-segment-attempts": 3,
             "hls-segment-ignore-names": [],
             "hls-segment-threads": 1,
@@ -134,6 +135,8 @@ class Streamlink:
 
         hls-live-edge            (int) How many segments from the end
                                  to start live streams on, default: ``3``
+
+        hls-segment-host         (str) Specify the hostname for each link, default: ``None``
 
         hls-segment-attempts     (int) How many attempts should be done
                                  to download each HLS segment, default: ``3``

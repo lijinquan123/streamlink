@@ -834,6 +834,16 @@ def build_parser():
         """
     )
     transport.add_argument(
+        "--hls-segment-host",
+        type=str,
+        metavar="HOST",
+        help="""
+        Specify the hostname for each segment link.
+
+        default is None.
+        """
+    )
+    transport.add_argument(
         "--hls-segment-stream-data",
         action="store_true",
         help="""
