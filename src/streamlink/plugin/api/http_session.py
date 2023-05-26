@@ -264,8 +264,14 @@ class HTTPSession(Session):
                       f'{length}bytes {res.url} {res.request.headers}')
                 if raise_for_status and res.status_code not in acceptable_status:
                     res.raise_for_status()
-                if self.is_error_status_codes(res.status_code) or not length:
+                if self.is_error_status_codes(res.status_code):
                     raise HTTPStatusCodesError(res.status_code)
+                msg = f'code: {res.status_code}, length: {length}'
+                if not length:
+                    if exception:
+                        raise exception(msg)
+                    else:
+                        raise HTTPStatusCodesError(msg)
                 # LJQ: 上报播放正常状态
                 if not dont_report:
                     self.report_play_status({'status': True, 'code': res.status_code, 'length': length})
@@ -290,7 +296,8 @@ class HTTPSession(Session):
                         raise err
 
                 if retries >= total_retries:
-                    err = HTTPStatusCodesError(f"Unable to open URL: {url} ({rerr})")
+                    mixed_exception = exception or HTTPStatusCodesError
+                    err = mixed_exception(f"Unable to open URL: {url} ({rerr})")
                     err.err = rerr
                     raise err
                 retries += 1
