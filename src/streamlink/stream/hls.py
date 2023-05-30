@@ -79,16 +79,24 @@ class HLSStreamWriter(SegmentedStreamWriter):
             key_uri = key.uri
 
         if self.key_uri != key_uri:
-            key_file = self.drm_dir / self.key_filename
-            log.info(f'key data file: {key_file.as_posix()}, key_uri: {key_uri}')
-            if not key_file.exists():
+            if self.key_filename:
+                key_file = self.drm_dir / self.key_filename
+                log.info(f'key data file: {key_file.as_posix()}, key_uri: {key_uri}')
+                if not key_file.exists():
+                    res = self.session.http.get(key_uri, exception=StreamError,
+                                                retries=self.retries,
+                                                **self.reader.request_params)
+                    res.encoding = "binary/octet-stream"
+                    key_file.write_bytes(res.content)
+                self.key_data = key_file.read_bytes()
+                self.key_uri = key_uri
+            else:
                 res = self.session.http.get(key_uri, exception=StreamError,
                                             retries=self.retries,
                                             **self.reader.request_params)
                 res.encoding = "binary/octet-stream"
-                key_file.write_bytes(res.content)
-            self.key_data = key_file.read_bytes()
-            self.key_uri = key_uri
+                self.key_data = res.content
+                self.key_uri = key_uri
 
         iv = key.iv or num_to_iv(sequence)
 
