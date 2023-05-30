@@ -1,3 +1,4 @@
+import platform
 import threading
 import time
 from contextlib import suppress
@@ -260,8 +261,9 @@ class HTTPSession(Session):
                     **kwargs
                 )
                 length = int(res.headers.get("Content-Length", 0) or len(res.content))
-                print(f'{res.status_code} {res.request.method} {res.elapsed.total_seconds():.3f}s '
-                      f'{length}bytes {res.url} {res.request.headers}')
+                if platform.system().lower() == 'windows':
+                    print(f'{res.status_code} {res.request.method} {res.elapsed.total_seconds():.3f}s '
+                          f'{length}bytes {res.url} {res.request.headers}')
                 if raise_for_status and res.status_code not in acceptable_status:
                     res.raise_for_status()
                 if self.is_error_status_codes(res.status_code):
