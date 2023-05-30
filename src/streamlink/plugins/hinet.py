@@ -7,7 +7,6 @@ import json
 import logging
 import re
 import time
-from urllib.parse import urlparse
 
 from streamlink.plugin import Plugin, PluginArgument, PluginArguments
 from streamlink.plugin.plugin import parse_url_params
@@ -64,10 +63,7 @@ class Hinet(Plugin):
 
     @classmethod
     def can_handle_url(cls, url):
-        m = cls._url_re.match(url)
-        if m:
-            url_path = urlparse(m.group(2)).path
-            return m.group(1) is not None or url_path.endswith(".m3u8")
+        return url[:5] == 'hinet'
 
     def get_play_url(self):
         from Crypto.Cipher import AES
