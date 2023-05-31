@@ -955,6 +955,17 @@ def build_parser():
         """
     )
     transport.add_argument(
+        "--hls-segment-key-filename",
+        metavar="FILE",
+        type=str,
+        help="""
+        File to save segment encryption key.
+        Examples:
+
+          --hls-segment-key-filename "key.txt"
+        """
+    )
+    transport.add_argument(
         "--hls-token-uri",
         metavar="URI",
         type=str,

@@ -4,6 +4,7 @@ import re
 import struct
 import time
 from collections import OrderedDict, defaultdict, namedtuple
+from pathlib import Path
 from threading import Event
 from urllib.parse import urlparse, urlunparse
 
@@ -39,6 +40,8 @@ class HLSStreamWriter(SegmentedStreamWriter):
         self.key_data = None
         self.key_uri = None
         self.key_uri_override = options.get("hls-segment-key-uri")
+        self.drm_dir = Path(options.get("drm-temp-dir") or '/tmp/drm')
+        self.key_filename = options.get("hls-segment-key-filename")
         self.stream_data = options.get("hls-segment-stream-data")
 
         self.segment_host = self.session.options.get("hls-segment-host")
@@ -76,12 +79,24 @@ class HLSStreamWriter(SegmentedStreamWriter):
             key_uri = key.uri
 
         if self.key_uri != key_uri:
-            res = self.session.http.get(key_uri, exception=StreamError,
-                                        retries=self.retries,
-                                        **self.reader.request_params)
-            res.encoding = "binary/octet-stream"
-            self.key_data = res.content
-            self.key_uri = key_uri
+            if self.key_filename:
+                key_file = self.drm_dir / self.key_filename
+                log.info(f'key data file: {key_file.as_posix()}, key_uri: {key_uri}')
+                if not key_file.exists():
+                    res = self.session.http.get(key_uri, exception=StreamError,
+                                                retries=self.retries,
+                                                **self.reader.request_params)
+                    res.encoding = "binary/octet-stream"
+                    key_file.write_bytes(res.content)
+                self.key_data = key_file.read_bytes()
+                self.key_uri = key_uri
+            else:
+                res = self.session.http.get(key_uri, exception=StreamError,
+                                            retries=self.retries,
+                                            **self.reader.request_params)
+                res.encoding = "binary/octet-stream"
+                self.key_data = res.content
+                self.key_uri = key_uri
 
         iv = key.iv or num_to_iv(sequence)
 
