@@ -269,7 +269,7 @@ class HTTPSession(Session):
                 if self.is_error_status_codes(res.status_code):
                     raise HTTPStatusCodesError(res.status_code)
                 msg = f'code: {res.status_code}, length: {length}'
-                if not length:
+                if not length and 200 <= res.status_code < 300:
                     if exception:
                         raise exception(msg)
                     else:
