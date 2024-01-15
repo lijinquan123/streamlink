@@ -40,6 +40,7 @@ class Streamlink:
             "ipv4": False,
             "ipv6": False,
             "dash-live-edge": 3,
+            "useless-audio-codes": "",
             "hds-live-edge": 10.0,
             "hds-segment-attempts": 3,
             "hds-segment-threads": 1,

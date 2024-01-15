@@ -253,12 +253,13 @@ class DASHStream(Stream):
         locale = session.localization
         locale_lang = locale.language
         lang = None
-        available_languages = set()
+        # 应该保存所有音轨而非过滤相同语言的音轨,因为相同语言音轨编码可能是不同的(如: mp4a,ac3)
+        available_languages = []
 
         # if the locale is explicitly set, prefer that language over others
         for aud in audio:
             if aud and aud.lang:
-                available_languages.add(aud.lang)
+                available_languages.append(aud.lang)
                 try:
                     if locale.explicit and aud.lang and Language.get(aud.lang) == locale_lang:
                         lang = aud.lang
@@ -277,7 +278,7 @@ class DASHStream(Stream):
         # if the language is given by the stream, filter out other languages that do not match
         if len(available_languages) > 1:
             audio = list(filter(lambda a: a.lang is None or a.lang == lang, audio))
-
+        useless_audio_codes = session.options.get("useless-audio-codes")
         ret = []
         for vid, aud in itertools.product(video, audio):
             stream = DASHStream(session, mpd, vid, aud, **args)
@@ -286,7 +287,11 @@ class DASHStream(Stream):
             if vid:
                 stream_name.append("{:0.0f}{}".format(vid.height or vid.bandwidth_rounded, "p" if vid.height else "k"))
             if audio and len(audio) > 1:
-                stream_name.append("a{:0.0f}k".format(aud.bandwidth))
+                bandwidth = aud.bandwidth
+                codecs = aud.codecs or ''
+                if useless_audio_codes and codecs not in useless_audio_codes:
+                    bandwidth += 1000000
+                stream_name.append("a{:0.0f}k".format(bandwidth))
             ret.append(('+'.join(stream_name), stream))
 
         # rename duplicate streams

@@ -748,6 +748,9 @@ def setup_options():
     if args.ipv6:
         streamlink.set_option("ipv6", args.ipv6)
 
+    if args.useless_audio_codes:
+        streamlink.set_option("useless-audio-codes", args.useless_audio_codes)
+
     if args.dash_live_edge:
         streamlink.set_option("dash-live-edge", args.dash_live_edge)
 

@@ -756,6 +756,18 @@ def build_parser():
 
     transport = parser.add_argument_group("Stream transport options")
     transport.add_argument(
+        "--useless-audio-codes",
+        type=str,
+        metavar="CODES",
+        help="""
+        Useless audio codes.
+
+        For avoiding useless audios, make useless audios low priority.
+
+        Default is "".
+        """
+    )
+    transport.add_argument(
         "--dash-live-edge",
         type=num(int, min=0),
         metavar="SEGMENTS",

@@ -8,8 +8,6 @@ import re
 from contextlib import suppress
 from urllib.parse import urlsplit, urlunsplit
 
-from lxml import html
-
 from streamlink.plugin import Plugin, PluginArgument, PluginArguments
 from streamlink.stream import HLSStream
 
@@ -83,6 +81,7 @@ class NSW(Plugin):
     def _get_streams(self):
         from Crypto.Cipher import AES
         from Crypto.Util.Padding import unpad
+        from lxml import html
         key = self.get_option("aec-key").encode('utf-8')
         iv = self.get_option("aec-iv").encode('utf-8')
         resp = self.session.http.request('get', self.url, timeout=self.timeout)
