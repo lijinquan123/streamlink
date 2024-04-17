@@ -1,7 +1,6 @@
 import locale
 import logging
 
-
 try:
     from iso639 import languages
     from iso3166 import countries
@@ -129,8 +128,9 @@ class Localization:
 
     def _parse_locale_code(self, language_code):
         parts = language_code.split("_", 1)
-        if len(parts) != 2 or len(parts[0]) != 2 or len(parts[1]) != 2:
-            raise LookupError("Invalid language code: {0}".format(language_code))
+        # 禁止检查语言代码, 因为会导致`yue_hk`报错, 而无法选择粤语音频
+        # if len(parts) != 2 or len(parts[0]) != 2 or len(parts[1]) != 2:
+        #     raise LookupError("Invalid language code: {0}".format(language_code))
         return self.get_language(parts[0]), self.get_country(parts[1])
 
     @language_code.setter
