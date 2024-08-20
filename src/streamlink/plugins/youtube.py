@@ -4,7 +4,7 @@ import re
 from html import unescape
 from urllib.parse import urlparse, urlunparse
 
-from streamlink.plugin import Plugin, PluginError
+from streamlink.plugin import Plugin, PluginArgument, PluginArguments, PluginError
 from streamlink.plugin.api import useragents, validate
 from streamlink.plugin.api.utils import itertags
 from streamlink.stream import HLSStream, HTTPStream
@@ -15,6 +15,15 @@ log = logging.getLogger(__name__)
 
 
 class YouTube(Plugin):
+    arguments = PluginArguments(
+        PluginArgument(
+            "cookie",
+            sensitive=False,
+            default="",
+            metavar="Cookie",
+            help="Cookie"
+        )
+    )
     _re_url = re.compile(r"""
         https?://(?:\w+\.)?youtube\.com/
         (?:
@@ -210,7 +219,11 @@ class YouTube(Plugin):
         return streams
 
     def _get_res(self, url):
-        res = self.session.http.get(url)
+        cookie = self.get_option("cookie")
+        res = self.session.http.get(url, headers={
+            **(self.session.http.headers or {}),
+            'Cookie': cookie,
+        })
         if urlparse(res.url).netloc == "consent.youtube.com":
             c_data = {}
             for _i in itertags(res.text, "input"):
