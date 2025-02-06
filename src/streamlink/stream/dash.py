@@ -74,14 +74,7 @@ class DASHStreamWriter(SegmentedStreamWriter):
             return self.fetch(segment, retries - 1)
 
     def write(self, segment, res, chunk_size=8192):
-        if not self.decrypt_key:
-            for chunk in res.iter_content(chunk_size):
-                if not self.closed:
-                    self.reader.buffer.write(chunk)
-                else:
-                    log.warning("Download of segment: {} aborted".format(segment.url))
-                    return
-        else:
+        if self.decrypt_key and segment.drm_protected:
             try:
                 if not self.closed:
                     encrypt_file = self.drm_dir / f'{self.ident}_encrypt.tmp'
@@ -106,6 +99,13 @@ class DASHStreamWriter(SegmentedStreamWriter):
             except Exception as e:
                 log.exception(f"DRM解密模块错误, 停止DASHStreamWriter: {e}")
                 self.close()
+        else:
+            for chunk in res.iter_content(chunk_size):
+                if not self.closed:
+                    self.reader.buffer.write(chunk)
+                else:
+                    log.warning("Download of segment: {} aborted".format(segment.url))
+                    return
         log.debug("Download of segment: {} complete".format(segment.url))
 
 
@@ -166,6 +166,8 @@ class DASHStreamWorker(SegmentedStreamWorker):
                       url=self.mpd.url,
                       timelines=self.mpd.timelines)
 
+        if len(new_mpd.periods) > 1:
+            log.error('periods: ' + ','.join([p.id for p in new_mpd.periods]))
         new_rep = self.get_representation(new_mpd, self.reader.representation_id, self.reader.mime_type)
         with freeze_timeline(new_mpd):
             changed = len(list(itertools.islice(new_rep.segments(), 1))) > 0

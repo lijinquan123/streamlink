@@ -32,13 +32,14 @@ epoch_start = datetime.datetime(1970, 1, 1, tzinfo=utc)
 
 
 class Segment:
-    def __init__(self, url, duration, init=False, content=True, available_at=epoch_start, range=None):
+    def __init__(self, url, duration, init=False, content=True, available_at=epoch_start, range=None, parent=None):
         self.url = url
         self.duration = duration
         self.init = init
         self.content = content
         self.available_at = available_at
         self.range = range
+        self.drm_protected = bool(parent and parent.contentProtection)
 
 
 def datetime_to_seconds(dt):
@@ -371,9 +372,9 @@ class SegmentList(MPDNode):
     @property
     def segments(self):
         if self.initialization:
-            yield Segment(self.make_url(self.initialization.source_url), 0, init=True, content=False)
+            yield Segment(self.make_url(self.initialization.source_url), 0, init=True, content=False, parent=self.parent)
         for n, segment_url in enumerate(self.segment_urls, self.start_number):
-            yield Segment(self.make_url(segment_url.media), self.duration_seconds, range=segment_url.media_range)
+            yield Segment(self.make_url(segment_url.media), self.duration_seconds, range=segment_url.media_range, parent=self.parent)
 
     def make_url(self, url):
         return BaseURL.join(self.base_url, url)
@@ -442,14 +443,14 @@ class SegmentTemplate(MPDNode):
         if init:
             init_url = self.format_initialization(**kwargs)
             if init_url:
-                yield Segment(init_url, 0, True, False)
+                yield Segment(init_url, 0, True, False, parent=self.parent)
         segments = self.format_media(**kwargs)
         if init:
             segments = list(segments)[-kwargs['live_edge']:]
         for media_url, available_at in segments:
             # 测试用
             # print('yield', media_url, self.duration_seconds, False, True, available_at)
-            yield Segment(media_url, self.duration_seconds, False, True, available_at)
+            yield Segment(media_url, self.duration_seconds, False, True, available_at, parent=self.parent)
 
     def make_url(self, url):
         """
@@ -627,7 +628,7 @@ class Representation(MPDNode):
                 for segment in segmentList.segments:
                     yield segment
         else:
-            yield Segment(self.base_url, 0, True, True)
+            yield Segment(self.base_url, 0, True, True, parent=self.parent)
 
 
 class SubRepresentation(MPDNode):
