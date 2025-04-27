@@ -31,6 +31,16 @@ log = logging.getLogger(__name__)
 epoch_start = datetime.datetime(1970, 1, 1, tzinfo=utc)
 
 
+def get_mpd_attr(parent, value, tag):
+    if hasattr(parent, tag):
+        value = getattr(parent, tag)
+    while not value and hasattr(parent, 'parent'):
+        parent = getattr(parent, 'parent')
+        if hasattr(parent, tag):
+            value = getattr(parent, tag)
+    return value
+
+
 class Segment:
     def __init__(self, url, duration, init=False, content=True, available_at=epoch_start, range=None, parent=None):
         self.url = url
@@ -39,7 +49,7 @@ class Segment:
         self.content = content
         self.available_at = available_at
         self.range = range
-        self.drm_protected = bool(parent and parent.contentProtection)
+        self.drm_protected = bool(get_mpd_attr(parent, None, 'contentProtection'))
 
 
 def datetime_to_seconds(dt):
@@ -374,7 +384,8 @@ class SegmentList(MPDNode):
         if self.initialization:
             yield Segment(self.make_url(self.initialization.source_url), 0, init=True, content=False, parent=self.parent)
         for n, segment_url in enumerate(self.segment_urls, self.start_number):
-            yield Segment(self.make_url(segment_url.media), self.duration_seconds, range=segment_url.media_range, parent=self.parent)
+            yield Segment(self.make_url(segment_url.media), self.duration_seconds, range=segment_url.media_range,
+                          parent=self.parent)
 
     def make_url(self, url):
         return BaseURL.join(self.base_url, url)
@@ -595,6 +606,7 @@ class Representation(MPDNode):
         self.segmentBase = self.only_child(SegmentBase)
         self.segmentList = self.children(SegmentList)
         self.segmentTemplate = self.only_child(SegmentTemplate)
+        self.contentProtection = self.children(ContentProtection)
 
     @property
     def bandwidth_rounded(self):
