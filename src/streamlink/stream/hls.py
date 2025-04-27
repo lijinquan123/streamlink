@@ -597,6 +597,8 @@ class HLSStream(HTTPStream):
                     names["name"] = media.name
                 elif media.type == "AUDIO":
                     audio_streams.append(media)
+            if audio_streams:
+                session_.http.report_play_status({'audio': [aud.lang for aud in audio_streams]}, protected=False)
             for media in audio_streams:
                 # Media without a uri is not relevant as external audio
                 if not media.uri:

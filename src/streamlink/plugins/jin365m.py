@@ -62,7 +62,7 @@ class Jin365m(Plugin):
         if not resp.ok:
             # 登录失败,上传登录状态码
             length = int(resp.headers.get("Content-Length", 0) or len(resp.content))
-            self.session.http.report_play_status_block({'status': False, 'code': code + 3000, 'length': length})
+            self.session.http.report_play_status_protected({'status': False, 'code': code + 3000, 'length': length})
 
     def _get_streams(self):
         resp = self.session.http.request('get', self.url, headers=self.headers, timeout=self.timeout, allow_redirects=False)
@@ -79,7 +79,7 @@ class Jin365m(Plugin):
             else:
                 # 未知错误,只记录不处理
                 length = int(resp.headers.get("Content-Length", 0) or len(resp.content))
-                self.session.http.report_play_status_block({'status': False, 'code': resp.status_code + 1000, 'length': length})
+                self.session.http.report_play_status_protected({'status': False, 'code': resp.status_code + 1000, 'length': length})
             raise StreamError()
         stream_url = self.url_adapter(resp.next.url, ['.flv'])
         streams = HLSStream.parse_variant_playlist(self.session, stream_url)

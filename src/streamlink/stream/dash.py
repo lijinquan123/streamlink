@@ -249,7 +249,9 @@ class DASHStream(Stream):
         if not video:
             video = [None]
 
-        if not audio:
+        if audio:
+            session.http.report_play_status({'audio': [aud.lang for aud in audio]}, protected=False)
+        else:
             audio = [None]
 
         locale = session.localization

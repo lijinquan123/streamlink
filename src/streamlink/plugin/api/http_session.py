@@ -87,22 +87,28 @@ class HTTPSession(Session):
     def report_uri(self, uri):
         self._report_uri = uri
 
-    def report_play_status(self, data: dict):
+    def report_play_status(self, data: dict, protected=True):
         """
         上报当前播放状态
         """
-        threading.Thread(target=self.report_play_status_block, args=(data,), daemon=True).start()
+        if protected:
+            threading.Thread(target=self.report_play_status_protected, args=(data,), daemon=True).start()
+        else:
+            threading.Thread(target=self.report_play_status_only, args=(data,), daemon=True).start()
 
-    def report_play_status_block(self, data: dict):
+    def report_play_status_only(self, data: dict):
+        with suppress(Exception):
+            if self.report_uri and self.report_interval:
+                self.request('post', self.report_uri, json=data, dont_report=True)
+
+    def report_play_status_protected(self, data: dict):
         """
         上报当前播放状态
         """
-        if self.report_uri and self.report_interval:
-            if time.time() - type(self).last_report_interval > 60 or not data.get('status'):
-                type(self).last_report_interval = time.time()
-                with suppress(Exception):
-                    self.request('post', self.report_uri, json=data, dont_report=True)
-                type(self).last_report_interval = time.time()
+        if time.time() - type(self).last_report_interval > 60 or not data.get('status'):
+            type(self).last_report_interval = time.time()
+            self.report_play_status_only(data)
+            type(self).last_report_interval = time.time()
 
     # 添加错误码和停止流
     @property
@@ -289,7 +295,7 @@ class HTTPSession(Session):
                 else:
                     # LJQ: 上报播放异常状态: 状态码异常
                     if not dont_report:
-                        self.report_play_status_block({'status': False, 'code': res.status_code, 'length': length})
+                        self.report_play_status_protected({'status': False, 'code': res.status_code, 'length': length})
                     if self.is_error_status_codes(res.status_code):
                         if self.stop_stream_playing:
                             exception = HTTPStatusCodesError

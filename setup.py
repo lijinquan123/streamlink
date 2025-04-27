@@ -85,7 +85,7 @@ setup(name="streamlink",
                   "choice.",
       long_description=long_description,
       long_description_content_type="text/markdown",
-      url="https://github.com/streamlink/streamlink",
+      url="https://github.com/lijinquan123/streamlink",
       project_urls={
           "Documentation": "https://streamlink.github.io/",
           "Tracker": "https://github.com/streamlink/streamlink/issues",
