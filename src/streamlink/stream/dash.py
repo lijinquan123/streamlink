@@ -250,7 +250,7 @@ class DASHStream(Stream):
             video = [None]
 
         if audio:
-            session.http.report_play_status({'audio': [aud.lang for aud in audio]}, protected=False)
+            session.http.report_play_status({'audio': [getattr(aud, 'lang') for aud in audio]}, protected=False)
         else:
             audio = [None]
 
