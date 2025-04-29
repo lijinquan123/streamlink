@@ -4,6 +4,7 @@ import re
 import struct
 import time
 from collections import OrderedDict, defaultdict, namedtuple
+from contextlib import suppress
 from pathlib import Path
 from threading import Event
 from urllib.parse import urlparse, urlunparse
@@ -558,6 +559,28 @@ class HLSStream(HTTPStream):
     def _get_variant_playlist(cls, res):
         return hls_playlist.load(res.text, base_uri=res.url)
 
+    @staticmethod
+    def get_metadata(parser):
+        audios = []
+        videos = []
+        for med in parser.media:
+            if med.type == 'AUDIO':
+                audios.append(getattr(med, 'language', None))
+        for playlist in parser.playlists:
+            stream_info = playlist.stream_info
+            resolution = stream_info.resolution
+            if resolution:
+                resolution = resolution[1]
+            videos.append({
+                'resolution': resolution,
+                'bandwidth': getattr(stream_info, 'average_bandwidth', None) or getattr(stream_info, 'bandwidth', None),
+            })
+        return {
+            'audio': audios,
+            'video': videos,
+            'fmt': 'hls'
+        }
+
     @classmethod
     def parse_variant_playlist(cls, session_, url, name_key="name",
                                name_prefix="", check_streams=False,
@@ -585,6 +608,10 @@ class HLSStream(HTTPStream):
         except ValueError as err:
             raise OSError("Failed to parse playlist: {0}".format(err))
 
+        with suppress(Exception):
+            metadata = cls.get_metadata(parser)
+            session_.http.report_play_status(metadata, protected=False)
+
         streams = OrderedDict()
         for playlist in filter(lambda p: not p.is_iframe, parser.playlists):
             names = dict(name=None, pixels=None, bitrate=None)
@@ -597,9 +624,6 @@ class HLSStream(HTTPStream):
                     names["name"] = media.name
                 elif media.type == "AUDIO":
                     audio_streams.append(media)
-            if audio_streams:
-                session_.http.report_play_status({'audio': [getattr(aud, 'language') for aud in audio_streams], 'fmt': 'hls'},
-                                                 protected=False)
             for media in audio_streams:
                 # Media without a uri is not relevant as external audio
                 if not media.uri:

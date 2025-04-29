@@ -5,6 +5,7 @@ import logging
 import os.path
 import platform
 from collections import defaultdict
+from contextlib import suppress
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
@@ -249,9 +250,19 @@ class DASHStream(Stream):
         if not video:
             video = [None]
 
-        if audio:
-            session.http.report_play_status({'audio': [getattr(aud, 'lang') for aud in audio], 'fmt': 'dash'}, protected=False)
-        else:
+        with suppress(Exception):
+            session.http.report_play_status(
+                {
+                    'audio': [getattr(aud, 'lang', None) for aud in audio],
+                    'video': [{
+                        'resolution': getattr(vid, 'height', None),
+                        'bandwidth': getattr(vid, 'bandwidth_rounded', None),
+                    } for vid in video],
+                    'fmt': 'dash'
+                },
+                protected=False
+            )
+        if not audio:
             audio = [None]
 
         locale = session.localization
