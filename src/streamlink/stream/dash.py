@@ -19,6 +19,7 @@ from streamlink.stream.http import normalize_key, valid_args
 from streamlink.stream.segmented import SegmentedStreamReader, SegmentedStreamWorker, SegmentedStreamWriter
 from streamlink.stream.stream import Stream
 from streamlink.utils import parse_xml
+from streamlink.utils.args import boolean
 from streamlink.utils.l10n import Language
 
 log = logging.getLogger(__name__)
@@ -236,9 +237,10 @@ class DASHStream(Stream):
             mpd = MPD(session.http.xml(res, ignore_ns=True), base_url=urlunparse(urlp), url=url)
 
         video, audio = [], []
-
+        is_drm = False
         # Search for suitable video and audio representations
         for aset in mpd.periods[-1].adaptationSets:
+            is_drm = is_drm or bool(aset.contentProtection)
             if aset.contentProtection and not session.options.get("drm-decrypt-key"):
                 raise PluginError("{} is protected by DRM".format(url))
             for rep in aset.representations:
@@ -258,6 +260,7 @@ class DASHStream(Stream):
                         'resolution': getattr(vid, 'height', None),
                         'bandwidth': getattr(vid, 'bandwidth_rounded', None),
                     } for vid in video],
+                    'drm': is_drm,
                     'fmt': 'dash'
                 },
                 protected=False
