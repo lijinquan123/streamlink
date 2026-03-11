@@ -205,7 +205,7 @@ class YouTube(Plugin):
             ),
         )
         videoDetails = schema.validate(data)
-        log.trace(f"videoDetails = {videoDetails!r}")
+        log.trace("videoDetails = %r", videoDetails)
         return videoDetails
 
     @classmethod
@@ -354,7 +354,7 @@ class YouTube(Plugin):
                 "context": {
                     "client": {
                         "clientName": "ANDROID",
-                        "clientVersion": "19.45.36",
+                        "clientVersion": "21.08.266",
                         "platform": "DESKTOP",
                         "clientScreen": "EMBED",
                         "clientFormFactor": "UNKNOWN_FORM_FACTOR",
